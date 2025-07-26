@@ -4,59 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
-import { useState } from "react";
-
-// Sample cart data
-const initialCartItems = [
-  {
-    id: 1,
-    name: "Fresh Onions",
-    supplier: "Kumar Vegetables",
-    price: 45,
-    unit: "kg",
-    quantity: 2,
-    image: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=150"
-  },
-  {
-    id: 2,
-    name: "Fresh Tomatoes",
-    supplier: "Sharma Traders",
-    price: 35,
-    unit: "kg",
-    quantity: 3,
-    image: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=150"
-  },
-  {
-    id: 3,
-    name: "Cooking Oil",
-    supplier: "Patel Oil Mills",
-    price: 120,
-    unit: "L",
-    quantity: 1,
-    image: "https://images.unsplash.com/photo-1517022812141-23620dba5c23?w=150"
-  }
-];
+import { useCart } from "@/hooks/useCart";
+import { useOrders } from "@/hooks/useOrders";
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState(initialCartItems);
+  // Using vendor ID for demo - in real app this would come from auth
+  const vendorId = "11111111-1111-1111-1111-111111111111";
+  
+  const { cartItems, loading, total, updateQuantity, removeFromCart, clearCart } = useCart(vendorId);
+  const { placeOrder } = useOrders(vendorId, 'vendor');
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      setCartItems(cartItems.filter(item => item.id !== id));
-    } else {
-      setCartItems(cartItems.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      ));
+  const subtotal = total;
+  const tax = subtotal * 0.05; // 5% tax
+  const finalTotal = subtotal + tax;
+
+  const handlePlaceOrder = async () => {
+    const success = await placeOrder(cartItems);
+    if (success) {
+      await clearCart();
     }
   };
-
-  const removeItem = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.05; // 5% tax
-  const total = subtotal + tax;
 
   return (
     <SidebarProvider>
@@ -75,7 +42,12 @@ const Cart = () => {
 
           {/* Content */}
           <div className="p-6">
-            {cartItems.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Loading cart...</p>
+              </div>
+            ) : cartItems.length === 0 ? (
               <div className="text-center py-12">
                 <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
@@ -94,15 +66,15 @@ const Cart = () => {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           <img
-                            src={item.image}
-                            alt={item.name}
+                            src={item.product.image_url || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=150'}
+                            alt={item.product.name}
                             className="w-16 h-16 object-cover rounded-md"
                           />
                           <div className="flex-1">
-                            <h3 className="font-semibold">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground">{item.supplier}</p>
+                            <h3 className="font-semibold">{item.product.name}</h3>
+                            <p className="text-sm text-muted-foreground">{item.product.supplier.name}</p>
                             <p className="text-vendor-primary font-semibold">
-                              ₹{item.price}/{item.unit}
+                              ₹{item.product.price}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -126,12 +98,12 @@ const Cart = () => {
                           </div>
                           <div className="text-right">
                             <p className="font-semibold">
-                              ₹{item.price * item.quantity}
+                              ₹{item.product.price * item.quantity}
                             </p>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeFromCart(item.id)}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -161,12 +133,18 @@ const Cart = () => {
                       <div className="border-t pt-4">
                         <div className="flex justify-between font-semibold text-lg">
                           <span>Total</span>
-                          <span className="text-vendor-primary">₹{total.toFixed(2)}</span>
+                          <span className="text-vendor-primary">₹{finalTotal.toFixed(2)}</span>
                         </div>
                       </div>
                       
                       <div className="space-y-3 pt-4">
-                        <Button variant="vendor" className="w-full" size="lg">
+                        <Button 
+                          variant="vendor" 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handlePlaceOrder}
+                          disabled={cartItems.length === 0}
+                        >
                           Place Order
                         </Button>
                         <Button variant="vendor-outline" className="w-full">

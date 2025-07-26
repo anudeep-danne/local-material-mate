@@ -7,94 +7,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Search } from "lucide-react";
 import { useState } from "react";
-
-// Sample product data
-const products = [
-  {
-    id: 1,
-    name: "Fresh Onions",
-    supplier: "Kumar Vegetables",
-    price: 45,
-    unit: "kg",
-    stock: 50,
-    rating: 4.2,
-    image: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=300",
-    category: "Vegetables"
-  },
-  {
-    id: 2,
-    name: "Fresh Tomatoes",
-    supplier: "Sharma Traders",
-    price: 35,
-    unit: "kg",
-    stock: 30,
-    rating: 4.8,
-    image: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=300",
-    category: "Vegetables"
-  },
-  {
-    id: 3,
-    name: "Cooking Oil",
-    supplier: "Patel Oil Mills",
-    price: 120,
-    unit: "L",
-    stock: 25,
-    rating: 4.1,
-    image: "https://images.unsplash.com/photo-1517022812141-23620dba5c23?w=300",
-    category: "Oil"
-  },
-  {
-    id: 4,
-    name: "Spice Mix",
-    supplier: "Gupta Spices",
-    price: 80,
-    unit: "kg",
-    stock: 15,
-    rating: 4.9,
-    image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=300",
-    category: "Spices"
-  },
-  {
-    id: 5,
-    name: "Basmati Rice",
-    supplier: "Rice Valley",
-    price: 120,
-    unit: "kg",
-    stock: 40,
-    rating: 4.6,
-    image: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb?w=300",
-    category: "Grains"
-  },
-  {
-    id: 6,
-    name: "Fresh Potatoes",
-    supplier: "Kumar Vegetables",
-    price: 25,
-    unit: "kg",
-    stock: 60,
-    rating: 4.3,
-    image: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=300",
-    category: "Vegetables"
-  }
-];
+import { useProducts } from "@/hooks/useProducts";
+import { useCart } from "@/hooks/useCart";
 
 const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.supplier.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    
-    let matchesPrice = true;
-    if (priceRange === "0-50") matchesPrice = product.price <= 50;
-    else if (priceRange === "50-100") matchesPrice = product.price > 50 && product.price <= 100;
-    else if (priceRange === "100+") matchesPrice = product.price > 100;
+  // Using vendor ID for demo - in real app this would come from auth
+  const vendorId = "11111111-1111-1111-1111-111111111111";
+  
+  const filters = {
+    category: selectedCategory === "all" ? undefined : selectedCategory,
+    priceMin: priceRange === "50-100" ? 50 : priceRange === "100+" ? 100 : undefined,
+    priceMax: priceRange === "0-50" ? 50 : priceRange === "50-100" ? 100 : undefined,
+  };
 
-    return matchesSearch && matchesCategory && matchesPrice;
-  });
+  const { products, loading, error } = useProducts(filters);
+  const { addToCart } = useCart(vendorId);
+
+  const filteredProducts = products.filter(product => 
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <SidebarProvider>
@@ -131,7 +67,7 @@ const BrowseProducts = () => {
                   <SelectItem value="Vegetables">Vegetables</SelectItem>
                   <SelectItem value="Grains">Grains</SelectItem>
                   <SelectItem value="Spices">Spices</SelectItem>
-                  <SelectItem value="Oil">Oil</SelectItem>
+                  <SelectItem value="Oils">Oils</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -168,58 +104,67 @@ const BrowseProducts = () => {
             </div>
 
             {/* Product Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-square overflow-hidden">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="object-cover w-full h-full hover:scale-105 transition-transform duration-200"
-                    />
-                  </div>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{product.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{product.supplier}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-vendor-primary">
-                        ₹{product.price}/{product.unit}
-                      </span>
-                      <Badge variant="secondary">
-                        Stock: {product.stock}{product.unit}
-                      </Badge>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {[...Array(8)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <div className="aspect-square bg-muted"></div>
+                    <CardHeader className="pb-2">
+                      <div className="h-5 bg-muted rounded w-3/4"></div>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
+                      <div className="h-10 bg-muted rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-destructive">
+                Error loading products: {error}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                  <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="aspect-square overflow-hidden">
+                      <img
+                        src={product.image_url || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=300'}
+                        alt={product.name}
+                        className="object-cover w-full h-full hover:scale-105 transition-transform duration-200"
+                      />
                     </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < Math.floor(product.rating)
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{product.supplier.name}</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-vendor-primary">
+                          ₹{product.price}
+                        </span>
+                        <Badge variant="secondary">
+                          Stock: {product.stock}
+                        </Badge>
                       </div>
-                      <span className="text-sm text-muted-foreground ml-1">
-                        {product.rating}
-                      </span>
-                    </div>
 
-                    <Button variant="vendor" className="w-full">
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Add to Cart
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      <Button 
+                        variant="vendor" 
+                        className="w-full"
+                        onClick={() => addToCart(product.id)}
+                        disabled={product.stock === 0}
+                      >
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
-            {filteredProducts.length === 0 && (
+            {filteredProducts.length === 0 && !loading && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No products found matching your criteria.</p>
               </div>

@@ -8,50 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Edit, Trash2, Plus, Search, Package } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-// Sample products data
-const products = [
-  {
-    id: 1,
-    name: "Premium Basmati Rice",
-    category: "Grains",
-    price: 80,
-    unit: "kg",
-    stock: 150,
-    status: "In Stock",
-    image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=150"
-  },
-  {
-    id: 2,
-    name: "Fresh Red Onions",
-    category: "Vegetables",
-    price: 35,
-    unit: "kg",
-    stock: 25,
-    status: "Low Stock",
-    image: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=150"
-  },
-  {
-    id: 3,
-    name: "Sunflower Oil",
-    category: "Oils",
-    price: 120,
-    unit: "L",
-    stock: 80,
-    status: "In Stock",
-    image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=150"
-  },
-  {
-    id: 4,
-    name: "Turmeric Powder",
-    category: "Spices",
-    price: 180,
-    unit: "kg",
-    stock: 0,
-    status: "Out of Stock",
-    image: "https://images.unsplash.com/photo-1615485291219-8c8da86f5f5b?w=150"
-  }
-];
+import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 
 const MyProducts = () => {
   const navigate = useNavigate();
@@ -59,25 +16,33 @@ const MyProducts = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
 
+  // Using supplier ID for demo - in real app this would come from auth
+  const supplierId = "22222222-2222-2222-2222-222222222222";
+  
+  const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId);
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    const matchesStatus = selectedStatus === "all" || product.status === selectedStatus;
+    
+    let matchesStatus = true;
+    if (selectedStatus === "In Stock") matchesStatus = product.stock > 10;
+    else if (selectedStatus === "Low Stock") matchesStatus = product.stock > 0 && product.stock <= 10;
+    else if (selectedStatus === "Out of Stock") matchesStatus = product.stock === 0;
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "In Stock":
-        return "bg-success text-white";
-      case "Low Stock":
-        return "bg-warning text-white";
-      case "Out of Stock":
-        return "bg-destructive text-white";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
+  const getStatusColor = (stock: number) => {
+    if (stock > 10) return "bg-green-500 text-white";
+    if (stock > 0) return "bg-yellow-500 text-white";
+    return "bg-red-500 text-white";
+  };
+
+  const getStatusText = (stock: number) => {
+    if (stock > 10) return "In Stock";
+    if (stock > 0) return "Low Stock";
+    return "Out of Stock";
   };
 
   return (
@@ -145,63 +110,95 @@ const MyProducts = () => {
             </div>
 
             {/* Products List */}
-            <div className="space-y-4">
-              {filteredProducts.map((product) => (
-                <Card key={product.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-6">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-lg font-semibold mb-1">{product.name}</h3>
-                            <Badge variant="secondary" className="mb-2">
-                              {product.category}
-                            </Badge>
-                            <p className="text-2xl font-bold text-supplier-primary">
-                              ₹{product.price}/{product.unit}
-                            </p>
-                          </div>
-                          
-                          <div className="text-right">
-                            <Badge className={getStatusColor(product.status)}>
-                              {product.status}
-                            </Badge>
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Stock: {product.stock} {product.unit}
-                            </p>
-                          </div>
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 bg-muted rounded-lg"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-5 bg-muted rounded w-1/3"></div>
+                          <div className="h-4 bg-muted rounded w-1/4"></div>
+                          <div className="h-6 bg-muted rounded w-1/2"></div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="h-8 bg-muted rounded w-16"></div>
+                          <div className="h-8 bg-muted rounded w-16"></div>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-destructive">
+                Error loading products: {error}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredProducts.map((product) => (
+                  <Card key={product.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-6">
+                        <img
+                          src={product.image_url || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=150'}
+                          alt={product.name}
+                          className="w-20 h-20 object-cover rounded-lg"
+                        />
+                        
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-lg font-semibold mb-1">{product.name}</h3>
+                              <Badge variant="secondary" className="mb-2">
+                                {product.category}
+                              </Badge>
+                              <p className="text-2xl font-bold text-supplier-primary">
+                                ₹{product.price}
+                              </p>
+                            </div>
+                            
+                            <div className="text-right">
+                              <Badge className={getStatusColor(product.stock)}>
+                                {getStatusText(product.stock)}
+                              </Badge>
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Stock: {product.stock} units
+                              </p>
+                            </div>
+                          </div>
+                        </div>
 
-                      <div className="flex flex-col gap-2">
-                        <Button variant="supplier-outline" size="sm">
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button variant="supplier-outline" size="sm">
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => deleteProduct(product.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
-            {filteredProducts.length === 0 && (
+            {filteredProducts.length === 0 && !loading && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No products found matching your criteria.</p>
               </div>
             )}
 
-            {products.length === 0 && (
+            {products.length === 0 && !loading && (
               <div className="text-center py-12">
                 <div className="text-muted-foreground mb-4">
                   <Package className="h-16 w-16 mx-auto mb-4" />
