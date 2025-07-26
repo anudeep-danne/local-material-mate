@@ -137,7 +137,30 @@ const BrowseProducts = () => {
                     </div>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg">{product.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{product.supplier.name}</p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">{product.supplier.name}</p>
+                        {product.supplier.averageRating && product.supplier.averageRating > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-3 w-3 ${
+                                    i < Math.round(product.supplier.averageRating!)
+                                      ? "text-yellow-400 fill-current"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {product.supplier.averageRating.toFixed(1)} ({product.supplier.totalReviews} reviews)
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">No reviews yet</p>
+                        )}
+                      </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">

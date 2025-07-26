@@ -3,7 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
 type Product = Database['public']['Tables']['products']['Row'] & {
-  supplier: Database['public']['Tables']['users']['Row'];
+  supplier: Database['public']['Tables']['users']['Row'] & {
+    averageRating?: number;
+    totalReviews?: number;
+  };
 };
 
 export const useProducts = (filters?: {
@@ -42,7 +45,32 @@ export const useProducts = (filters?: {
       const { data, error } = await query.gt('stock', 0).order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProducts(data as Product[]);
+      
+      // Fetch supplier ratings
+      const productsWithRatings = await Promise.all(
+        (data as Product[]).map(async (product) => {
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('supplier_id', product.supplier.id);
+
+          const ratings = reviews?.map(r => r.rating) || [];
+          const averageRating = ratings.length > 0 
+            ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length 
+            : 0;
+
+          return {
+            ...product,
+            supplier: {
+              ...product.supplier,
+              averageRating,
+              totalReviews: ratings.length
+            }
+          };
+        })
+      );
+
+      setProducts(productsWithRatings);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
