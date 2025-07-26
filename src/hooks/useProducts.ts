@@ -29,7 +29,20 @@ export const useProducts = (filters?: {
         .from('products')
         .select(`
           *,
-          supplier:users!products_supplier_id_fkey(*)
+          supplier:users!products_supplier_id_fkey(
+            id,
+            name,
+            business_name,
+            email,
+            phone,
+            address,
+            city,
+            state,
+            pincode,
+            latitude,
+            longitude,
+            description
+          )
         `);
 
       if (filters?.category) {

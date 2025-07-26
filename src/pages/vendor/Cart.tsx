@@ -72,7 +72,10 @@ const Cart = () => {
                           />
                           <div className="flex-1">
                             <h3 className="font-semibold">{item.product.name}</h3>
-                            <p className="text-sm text-muted-foreground">{item.product.supplier.name}</p>
+                            <p className="text-sm text-muted-foreground">{item.product.category}</p>
+                            <p className="text-sm text-vendor-primary font-medium">
+                              {item.product.supplier?.business_name || item.product.supplier?.name}
+                            </p>
                             <p className="text-vendor-primary font-semibold">
                               ₹{item.product.price}
                             </p>

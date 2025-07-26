@@ -7,12 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Save, Building, MapPin, Phone, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useSupplierAccount } from "@/hooks/useSupplierAccount";
+import { useSupplierProfile } from "@/hooks/useSupplierProfile";
 
 const AccountSettings = () => {
   // Using supplier ID for demo - in real app this would come from auth
   const supplierId = "22222222-2222-2222-2222-222222222222";
-  const { account, loading, updateAccount } = useSupplierAccount(supplierId);
+  const { profile, updateProfile, loading } = useSupplierProfile(supplierId);
   
   const [formData, setFormData] = useState({
     businessName: "",
@@ -30,23 +30,23 @@ const AccountSettings = () => {
   });
 
   useEffect(() => {
-    if (account) {
+    if (profile) {
       setFormData({
-        businessName: account.business_name || "",
-        ownerName: account.name || "",
-        email: account.email || "",
-        phone: account.phone || "",
-        address: account.address || "",
-        city: account.city || "",
-        state: account.state || "",
-        pincode: account.pincode || "",
+        businessName: profile.business_name || "",
+        ownerName: profile.name || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
+        city: profile.city || "",
+        state: profile.state || "",
+        pincode: profile.pincode || "",
         gstNumber: "",
         bankAccount: "",
         ifscCode: "",
-        description: account.description || ""
+        description: profile.description || ""
       });
     }
-  }, [account]);
+  }, [profile]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -54,7 +54,7 @@ const AccountSettings = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateAccount({
+    await updateProfile({
       business_name: formData.businessName,
       name: formData.ownerName,
       email: formData.email,
