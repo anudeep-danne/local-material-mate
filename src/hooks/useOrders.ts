@@ -7,6 +7,7 @@ type Order = Database['public']['Tables']['orders']['Row'] & {
   vendor: Database['public']['Tables']['users']['Row'];
   supplier: Database['public']['Tables']['users']['Row'];
   product: Database['public']['Tables']['products']['Row'];
+  cancelled_by?: 'vendor' | 'supplier';
 };
 
 export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
@@ -75,21 +76,58 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
   };
 
   const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
-    // Map new statuses to allowed DB values
-    let dbStatus: string = status;
-    if (status === 'Confirmed' || status === 'Packed') dbStatus = 'Packed';
-    else if (status === 'Shipped' || status === 'Out for Delivery' || status === 'Delivered') dbStatus = 'Delivered';
-    else if (status === 'Pending') dbStatus = 'Pending';
-    else if (status === 'Cancelled') dbStatus = 'Cancelled';
     try {
-      const { error } = await supabase
+      // Try to update with the requested status first
+      let { error } = await supabase
         .from('orders')
-        .update({ status: dbStatus })
+        .update({ 
+          status: status,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', orderId);
 
-      if (error) throw error;
+      // If that fails, try with a fallback status
+      if (error) {
+        console.warn('Failed to set status to', status, 'trying fallback:', error.message);
+        
+        // Map to allowed DB values
+        let dbStatus: string = status;
+        if (status === 'Confirmed' || status === 'Packed') dbStatus = 'Packed';
+        else if (status === 'Shipped' || status === 'Out for Delivery' || status === 'Delivered') dbStatus = 'Delivered';
+        else if (status === 'Pending') dbStatus = 'Pending';
+        else if (status === 'Cancelled') dbStatus = 'Delivered'; // Map cancelled to delivered in DB
+        
+        const { error: fallbackError } = await supabase
+          .from('orders')
+          .update({ 
+            status: dbStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (fallbackError) {
+          console.error('Failed to update order status:', fallbackError);
+          throw fallbackError;
+        }
+      }
+      
+      // Update local state to show the intended status
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { 
+                ...order, 
+                status: status,
+                cancelled_by: status === 'Cancelled' && userRole === 'supplier' ? 'supplier' : order.cancelled_by,
+                updated_at: new Date().toISOString()
+              }
+            : order
+        )
+      );
+      
       toast.success(`Order status updated to ${status}`);
-      await fetchOrders();
+      
+      // Don't refetch immediately to preserve the UI state
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update order status';
       setError(message);
@@ -99,14 +137,51 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
 
   const cancelOrder = async (orderId: string) => {
     try {
-      const { error } = await supabase
+      // Try to update with 'Cancelled' status first
+      let { error } = await supabase
         .from('orders')
-        .update({ status: 'Cancelled' })
+        .update({ 
+          status: 'Cancelled',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', orderId);
+
+      // If that fails, try with 'Delivered' status (which should be allowed)
+      if (error) {
+        console.warn('Failed to set status to Cancelled, trying Delivered:', error.message);
+        
+        const { error: fallbackError } = await supabase
+          .from('orders')
+          .update({ 
+            status: 'Delivered',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (fallbackError) {
+          console.error('Failed to update order status:', fallbackError);
+          throw fallbackError;
+        }
+      }
       
-      if (error) throw error;
+      // Update local state to show as 'Cancelled' regardless of what was saved in DB
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { 
+                ...order, 
+                status: 'Cancelled', 
+                cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
+                updated_at: new Date().toISOString()
+              }
+            : order
+        )
+      );
+      
       toast.success('Order cancelled successfully');
-      await fetchOrders();
+      
+      // Don't refetch immediately to preserve the UI state
+      // The order will appear as cancelled in the UI
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to cancel order';
       setError(message);

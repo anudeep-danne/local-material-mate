@@ -18,7 +18,8 @@ import {
   Scale, 
   Star, 
   Home,
-  Utensils 
+  Utensils,
+  User
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ const vendorItems = [
   { title: "My Orders", url: "/vendor/orders", icon: Package },
   { title: "Compare Suppliers", url: "/vendor/compare", icon: Scale },
   { title: "Reviews", url: "/vendor/reviews", icon: Star },
+  { title: "Account Settings", url: "/vendor/account", icon: User },
 ];
 
 export function VendorSidebar() {

@@ -4,6 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Package, Clock, CheckCircle, User, Truck, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useOrders } from "@/hooks/useOrders";
@@ -14,6 +25,10 @@ const IncomingOrders = () => {
   const supplierId = "22222222-2222-2222-2222-222222222222";
   const { orders, loading, updateOrderStatus } = useOrders(supplierId, 'supplier');
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
+  const [orderToDecline, setOrderToDecline] = useState<string | null>(null);
+  
+  // Filter out cancelled orders from incoming orders
+  const activeOrders = orders.filter(order => order.status !== 'Cancelled');
   
   // Sync orderStatuses with real orders
   React.useEffect(() => {
@@ -66,10 +81,15 @@ const IncomingOrders = () => {
 
   const handleAcceptOrder = async (orderId: string) => {
     await updateOrderStatus(orderId, "Confirmed");
+    // Update local state immediately
+    setOrderStatuses(prev => ({ ...prev, [orderId]: "Confirmed" }));
   };
 
   const handleDeclineOrder = async (orderId: string) => {
     await updateOrderStatus(orderId, "Cancelled");
+    setOrderToDecline(null); // Close the dialog
+    // Update local state immediately
+    setOrderStatuses(prev => ({ ...prev, [orderId]: "Cancelled" }));
   };
 
   const getNextStatusOptions = (currentStatus: string) => {
@@ -102,14 +122,35 @@ const IncomingOrders = () => {
             >
               Accept Order
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-destructive hover:text-destructive"
-              onClick={() => handleDeclineOrder(orderId)}
-            >
-              Decline Order
-            </Button>
+            <AlertDialog open={orderToDecline === orderId} onOpenChange={(open) => !open && setOrderToDecline(null)}>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-destructive hover:text-destructive"
+                  onClick={() => setOrderToDecline(orderId)}
+                >
+                  Decline Order
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Decline Order</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to decline this order? This action cannot be undone and the order will be cancelled.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Order</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => handleDeclineOrder(orderId)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Decline Order
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         );
       case "Confirmed":
@@ -118,7 +159,10 @@ const IncomingOrders = () => {
             variant="supplier" 
             size="sm" 
             className="w-full"
-            onClick={() => updateOrderStatus(orderId, "Packed")}
+            onClick={async () => {
+              await updateOrderStatus(orderId, "Packed");
+              setOrderStatuses(prev => ({ ...prev, [orderId]: "Packed" }));
+            }}
           >
             Mark as Packed
           </Button>
@@ -129,7 +173,10 @@ const IncomingOrders = () => {
             variant="supplier" 
             size="sm" 
             className="w-full"
-            onClick={() => updateOrderStatus(orderId, "Shipped")}
+            onClick={async () => {
+              await updateOrderStatus(orderId, "Shipped");
+              setOrderStatuses(prev => ({ ...prev, [orderId]: "Shipped" }));
+            }}
           >
             Mark as Shipped
           </Button>
@@ -140,7 +187,10 @@ const IncomingOrders = () => {
             variant="supplier" 
             size="sm" 
             className="w-full"
-            onClick={() => updateOrderStatus(orderId, "Out for Delivery")}
+            onClick={async () => {
+              await updateOrderStatus(orderId, "Out for Delivery");
+              setOrderStatuses(prev => ({ ...prev, [orderId]: "Out for Delivery" }));
+            }}
           >
             Mark as Out for Delivery
           </Button>
@@ -151,7 +201,10 @@ const IncomingOrders = () => {
             variant="supplier" 
             size="sm" 
             className="w-full"
-            onClick={() => updateOrderStatus(orderId, "Delivered")}
+            onClick={async () => {
+              await updateOrderStatus(orderId, "Delivered");
+              setOrderStatuses(prev => ({ ...prev, [orderId]: "Delivered" }));
+            }}
           >
             Mark as Delivered
           </Button>
@@ -184,7 +237,7 @@ const IncomingOrders = () => {
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
             <Badge variant="secondary" className="ml-auto">
-              {orders.filter(order => orderStatuses[order.id] === "Pending").length} pending
+              {activeOrders.filter(order => orderStatuses[order.id] === "Pending").length} pending
             </Badge>
           </header>
 
@@ -193,7 +246,7 @@ const IncomingOrders = () => {
             <div className="space-y-6">
               {loading ? (
                 <div className="text-center py-12">Loading orders...</div>
-              ) : orders.length === 0 ? (
+              ) : activeOrders.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <h2 className="text-xl font-semibold mb-2">No incoming orders</h2>
@@ -202,7 +255,7 @@ const IncomingOrders = () => {
                   </p>
                 </div>
               ) : (
-                orders.map((order) => (
+                activeOrders.map((order) => (
                   <Card key={order.id} className="overflow-hidden">
                     <CardHeader className="bg-muted/30">
                       <div className="flex items-center justify-between">
@@ -262,7 +315,10 @@ const IncomingOrders = () => {
                             {orderStatuses[order.id] !== "Pending" && orderStatuses[order.id] !== "Cancelled" && (
                               <Select 
                                 value={orderStatuses[order.id]} 
-                                onValueChange={(value) => updateOrderStatus(order.id, value as any)}
+                                onValueChange={async (value) => {
+                                  await updateOrderStatus(order.id, value as any);
+                                  setOrderStatuses(prev => ({ ...prev, [order.id]: value }));
+                                }}
                               >
                                 <SelectTrigger>
                                   <SelectValue />

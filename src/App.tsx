@@ -16,6 +16,7 @@ import Cart from "./pages/vendor/Cart";
 import MyOrders from "./pages/vendor/MyOrders";
 import CompareSuppliers from "./pages/vendor/CompareSuppliers";
 import VendorReviews from "./pages/vendor/VendorReviews";
+import VendorAccountSettings from "./pages/vendor/AccountSettings";
 
 // Supplier Pages
 import SupplierDashboard from "./pages/supplier/SupplierDashboard";
@@ -24,7 +25,7 @@ import AddProduct from "./pages/supplier/AddProduct";
 import EditProduct from "./pages/supplier/EditProduct";
 import IncomingOrders from "./pages/supplier/IncomingOrders";
 import SupplierReviews from "./pages/supplier/SupplierReviews";
-import AccountSettings from "./pages/supplier/AccountSettings";
+import SupplierAccountSettings from "./pages/supplier/AccountSettings";
 import { useAuth } from '@/hooks/useAuth';
 
 const queryClient = new QueryClient();
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="/vendor/orders" element={<MyOrders />} />
         <Route path="/vendor/compare" element={<CompareSuppliers />} />
         <Route path="/vendor/reviews" element={<VendorReviews />} />
+        <Route path="/vendor/account" element={<VendorAccountSettings />} />
       </Route>
       <Route element={<ProtectedRoute role="supplier" />}> 
         <Route path="/supplier/dashboard" element={<SupplierDashboard />} />
@@ -132,7 +134,7 @@ function AppRoutes() {
         <Route path="/supplier/edit-product/:productId" element={<EditProduct />} />
         <Route path="/supplier/orders" element={<IncomingOrders />} />
         <Route path="/supplier/reviews" element={<SupplierReviews />} />
-        <Route path="/supplier/settings" element={<AccountSettings />} />
+        <Route path="/supplier/settings" element={<SupplierAccountSettings />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
