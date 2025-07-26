@@ -20,6 +20,8 @@ import {
   Home,
   Utensils 
 } from "lucide-react";
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
 
 const vendorItems = [
   { title: "Dashboard", url: "/vendor/dashboard", icon: Home },
@@ -33,6 +35,7 @@ const vendorItems = [
 export function VendorSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { logout } = useAuth();
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -72,6 +75,11 @@ export function VendorSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <div className="p-4">
+          <Button variant="destructive" className="w-full" onClick={logout}>
+            Logout
+          </Button>
+        </div>
       </SidebarContent>
     </Sidebar>
   );

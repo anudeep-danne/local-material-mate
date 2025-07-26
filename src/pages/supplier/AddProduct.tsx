@@ -10,12 +10,13 @@ import { Upload, Save, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
+import { useSupplierId } from "@/hooks/useSupplierId";
 
 const AddProduct = () => {
   const navigate = useNavigate();
-  // Using supplier ID for demo - in real app this would come from auth
-  const supplierId = "22222222-2222-2222-2222-222222222222";
-  const { addProduct, loading } = useSupplierProducts(supplierId);
+  const { supplierId, loading: supplierLoading, error: supplierError } = useSupplierId();
+  const { addProduct, loading: addLoading } = useSupplierProducts(supplierId || "");
+  
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -58,6 +59,52 @@ const AddProduct = () => {
       navigate('/supplier/products');
     }
   };
+
+  // Show loading state while supplier ID is being fetched
+  if (supplierLoading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <SupplierSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Add New Product</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg">Loading...</div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  // Show error state if supplier ID fetch failed
+  if (supplierError) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <SupplierSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Add New Product</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg text-destructive mb-4">Error loading supplier information</div>
+                <div className="text-sm text-muted-foreground mb-4">{supplierError}</div>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -113,12 +160,12 @@ const AddProduct = () => {
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="vegetables">Vegetables</SelectItem>
-                            <SelectItem value="grains">Grains</SelectItem>
-                            <SelectItem value="spices">Spices</SelectItem>
-                            <SelectItem value="oils">Oils</SelectItem>
-                            <SelectItem value="dairy">Dairy</SelectItem>
-                            <SelectItem value="others">Others</SelectItem>
+                            <SelectItem value="Vegetables">Vegetables</SelectItem>
+                            <SelectItem value="Grains">Grains</SelectItem>
+                            <SelectItem value="Spices">Spices</SelectItem>
+                            <SelectItem value="Oils">Oils</SelectItem>
+                            <SelectItem value="Dairy">Dairy</SelectItem>
+                            <SelectItem value="Others">Others</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -215,6 +262,7 @@ const AddProduct = () => {
                         variant="outline" 
                         className="flex-1"
                         onClick={() => navigate('/supplier/products')}
+                        disabled={addLoading}
                       >
                         Cancel
                       </Button>
@@ -222,9 +270,10 @@ const AddProduct = () => {
                         type="submit" 
                         variant="supplier" 
                         className="flex-1"
+                        disabled={addLoading}
                       >
                         <Save className="mr-2 h-4 w-4" />
-                        Save Product
+                        {addLoading ? 'Saving...' : 'Save Product'}
                       </Button>
                     </div>
                   </form>

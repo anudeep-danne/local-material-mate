@@ -9,6 +9,7 @@ import { Star, ShoppingCart, Search, Minus, Plus, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
+import { useVendorId } from "@/hooks/useVendorId";
 import { getCurrentLocation } from "@/lib/utils";
 
 const BrowseProducts = () => {
@@ -19,8 +20,7 @@ const BrowseProducts = () => {
   const [radiusFilter, setRadiusFilter] = useState("all");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  const { vendorId, loading: vendorLoading, error: vendorError } = useVendorId();
   
   const filters = {
     category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -30,8 +30,8 @@ const BrowseProducts = () => {
     radius: radiusFilter === "all" ? undefined : parseInt(radiusFilter)
   };
 
-  const { products, loading, error } = useProducts(filters);
-  const { cartItems, addToCart, updateQuantity } = useCart(vendorId);
+  const { products, loading: productsLoading, error: productsError } = useProducts(filters);
+  const { cartItems, addToCart, updateQuantity } = useCart(vendorId || "");
 
   const handleUseMyLocation = async () => {
     setIsGettingLocation(true);
@@ -77,6 +77,52 @@ const BrowseProducts = () => {
     product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.supplier.business_name && product.supplier.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Show loading state while vendor ID is being fetched
+  if (vendorLoading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Browse Products</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg">Loading...</div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  // Show error state if vendor ID fetch failed
+  if (vendorError) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Browse Products</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg text-destructive mb-4">Error loading vendor information</div>
+                <div className="text-sm text-muted-foreground mb-4">{vendorError}</div>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -176,7 +222,7 @@ const BrowseProducts = () => {
             </div>
 
             {/* Product Grid */}
-            {loading ? (
+            {productsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {[...Array(8)].map((_, i) => (
                   <Card key={i} className="animate-pulse">
@@ -192,9 +238,9 @@ const BrowseProducts = () => {
                   </Card>
                 ))}
               </div>
-            ) : error ? (
+            ) : productsError ? (
               <div className="text-center py-8 text-destructive">
-                Error loading products: {error}
+                Error loading products: {productsError}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -298,7 +344,7 @@ const BrowseProducts = () => {
               </div>
             )}
 
-            {filteredProducts.length === 0 && !loading && (
+            {filteredProducts.length === 0 && !productsLoading && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No products found matching your criteria.</p>
               </div>
