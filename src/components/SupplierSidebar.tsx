@@ -43,13 +43,13 @@ export function SupplierSidebar() {
       <SidebarContent>
         {/* Header */}
         <div className="p-4 border-b border-supplier-primary/20">
-          <div className="flex items-center gap-2">
+          <NavLink to="/" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
             <Warehouse className="h-6 w-6 text-supplier-primary" />
             <div>
               <h2 className="font-semibold text-supplier-primary">RawMate</h2>
               <p className="text-xs text-muted-foreground">Supplier Panel</p>
             </div>
-          </div>
+          </NavLink>
         </div>
 
         <SidebarGroup>

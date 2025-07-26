@@ -9,9 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Upload, Save, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  // Using supplier ID for demo - in real app this would come from auth
+  const supplierId = "22222222-2222-2222-2222-222222222222";
+  const { addProduct, loading } = useSupplierProducts(supplierId);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -33,12 +37,26 @@ const AddProduct = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Product data:", formData);
-    // Redirect to products page
-    navigate('/supplier/products');
+    // Convert price and quantity to numbers
+    const price = parseFloat(formData.price);
+    const stock = parseInt(formData.quantity, 10);
+    if (!formData.name || !formData.category || isNaN(price) || isNaN(stock) || !formData.unit) {
+      alert("Please fill all required fields.");
+      return;
+    }
+    // Call addProduct from hook
+    const success = await addProduct({
+      name: formData.name,
+      price,
+      stock,
+      category: formData.category,
+      image_url: undefined // Not handling image upload yet
+    });
+    if (success) {
+      navigate('/supplier/products');
+    }
   };
 
   return (

@@ -91,6 +91,24 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
     }
   };
 
+  const cancelOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+      if (error) throw error;
+      toast.success('Order cancelled successfully');
+      await fetchOrders();
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to cancel order';
+      setError(message);
+      toast.error(message);
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (userId && userRole) {
       fetchOrders();
@@ -103,6 +121,7 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
     error,
     placeOrder,
     updateOrderStatus,
+    cancelOrder,
     refetch: fetchOrders
   };
 };

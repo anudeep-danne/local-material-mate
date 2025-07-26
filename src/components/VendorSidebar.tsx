@@ -43,15 +43,13 @@ export function VendorSidebar() {
       <SidebarContent>
         {/* Header */}
         <div className="p-4 border-b border-vendor-primary/20">
-          <div className="flex items-center gap-2">
+          <NavLink to="/" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
             <Utensils className="h-6 w-6 text-vendor-primary" />
-            {true && (
-              <div>
-                <h2 className="font-semibold text-vendor-primary">RawMate</h2>
-                <p className="text-xs text-muted-foreground">Vendor Panel</p>
-              </div>
-            )}
-          </div>
+            <div>
+              <h2 className="font-semibold text-vendor-primary">RawMate</h2>
+              <p className="text-xs text-muted-foreground">Vendor Panel</p>
+            </div>
+          </NavLink>
         </div>
 
         <SidebarGroup>
