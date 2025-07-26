@@ -56,16 +56,19 @@ export function SupplierSidebar() {
           <SidebarGroupLabel>Supplier Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {supplierItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {supplierItems.map((item) => {
+                const active = currentPath === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={active}>
+                      <NavLink to={item.url} end className="flex items-center w-full">
+                        <item.icon className="mr-2 h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
