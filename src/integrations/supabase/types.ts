@@ -209,34 +209,52 @@ export type Database = {
       }
       users: {
         Row: {
-          created_at: string
-          id: string
-          name: string
-          role: string
+          address: string | null
+          business_name: string | null
           city: string | null
-          state: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          id: string
           latitude: number | null
           longitude: number | null
+          name: string
+          phone: string | null
+          pincode: string | null
+          role: string
+          state: string | null
         }
         Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          role: string
+          address?: string | null
+          business_name?: string | null
           city?: string | null
-          state?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
           latitude?: number | null
           longitude?: number | null
+          name: string
+          phone?: string | null
+          pincode?: string | null
+          role: string
+          state?: string | null
         }
         Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          role?: string
+          address?: string | null
+          business_name?: string | null
           city?: string | null
-          state?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
           latitude?: number | null
           longitude?: number | null
+          name?: string
+          phone?: string | null
+          pincode?: string | null
+          role?: string
+          state?: string | null
         }
         Relationships: []
       }

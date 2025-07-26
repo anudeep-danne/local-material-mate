@@ -74,7 +74,8 @@ const BrowseProducts = () => {
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
+    product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.supplier.business_name && product.supplier.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -209,7 +210,7 @@ const BrowseProducts = () => {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg">{product.name}</CardTitle>
                       <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">{product.supplier.name}</p>
+                        <p className="text-sm text-muted-foreground">{product.supplier.business_name || product.supplier.name}</p>
                         {(product.supplier.city || product.supplier.state) && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <MapPin className="h-3 w-3" />

@@ -6,32 +6,65 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Save, Building, MapPin, Phone, Mail } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSupplierAccount } from "@/hooks/useSupplierAccount";
 
 const AccountSettings = () => {
+  // Using supplier ID for demo - in real app this would come from auth
+  const supplierId = "22222222-2222-2222-2222-222222222222";
+  const { account, loading, updateAccount } = useSupplierAccount(supplierId);
+  
   const [formData, setFormData] = useState({
-    businessName: "Kumar Vegetables",
-    ownerName: "Rajesh Kumar",
-    email: "rajesh@kumarveg.com",
-    phone: "+91 98765 43210",
-    address: "Shop 15, Sector 14 Market, Delhi",
-    city: "New Delhi",
-    state: "Delhi",
-    pincode: "110001",
-    gstNumber: "07AAPFU0939F1ZV",
-    bankAccount: "1234567890",
-    ifscCode: "SBIN0000123",
-    description: "Fresh vegetables and produce supplier for street food vendors across Delhi NCR. Established in 2015, we pride ourselves on quality and timely delivery."
+    businessName: "",
+    ownerName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    gstNumber: "",
+    bankAccount: "",
+    ifscCode: "",
+    description: ""
   });
+
+  useEffect(() => {
+    if (account) {
+      setFormData({
+        businessName: account.business_name || "",
+        ownerName: account.name || "",
+        email: account.email || "",
+        phone: account.phone || "",
+        address: account.address || "",
+        city: account.city || "",
+        state: account.state || "",
+        pincode: account.pincode || "",
+        gstNumber: "",
+        bankAccount: "",
+        ifscCode: "",
+        description: account.description || ""
+      });
+    }
+  }, [account]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Account settings updated:", formData);
+    await updateAccount({
+      business_name: formData.businessName,
+      name: formData.ownerName,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      pincode: formData.pincode,
+      description: formData.description
+    });
   };
 
   return (
@@ -231,6 +264,7 @@ const AccountSettings = () => {
                   variant="supplier" 
                   size="lg"
                   className="px-8"
+                  disabled={loading}
                 >
                   <Save className="mr-2 h-4 w-4" />
                   Save Changes
