@@ -6,11 +6,13 @@ import { ShoppingCart, Package, Star, TrendingUp, Award, RefreshCw } from "lucid
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  // Get authenticated user ID
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   const { stats, loading, error, refetch } = useDashboard(vendorId, 'vendor');
 
   const renderStars = (rating: number) => {

@@ -27,6 +27,17 @@ const IncomingOrders = () => {
   const { user } = useAuth();
   const supplierId = user?.id;
   const { orders, loading, updateOrderStatus } = useOrders(supplierId || "", 'supplier');
+  
+  // Debug: Log vendor data for each order
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log('🔍 IncomingOrders: Orders with vendor data:', orders.map(order => ({
+        orderId: order.id,
+        vendor: order.vendor,
+        vendorId: order.vendor_id
+      })));
+    }
+  }, [orders]);
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
   const [orderToDecline, setOrderToDecline] = useState<string | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);

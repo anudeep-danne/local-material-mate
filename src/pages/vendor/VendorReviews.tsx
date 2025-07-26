@@ -9,10 +9,12 @@ import { useState, useEffect } from "react";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useReviews } from "@/hooks/useReviews";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const VendorReviews = () => {
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  // Get authenticated user ID
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   const { getRecentSuppliers } = useSuppliers(vendorId);
   const { reviews: pastReviews, submitReview, loading: reviewsLoading } = useReviews(vendorId, 'vendor');
   const [recentSuppliers, setRecentSuppliers] = useState<any[]>([]);

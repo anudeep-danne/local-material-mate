@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Package, Clock, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { useAuth } from "@/hooks/useAuth";
 
 const CompareSuppliers = () => {
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  // Get authenticated user ID
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   const { suppliers, loading, error, getRecentSuppliers } = useSuppliers(vendorId);
   const [recentSuppliers, setRecentSuppliers] = useState<any[]>([]);
   const [showRecentOnly, setShowRecentOnly] = useState(false);

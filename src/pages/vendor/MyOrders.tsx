@@ -19,6 +19,7 @@ import { Package, Truck, CheckCircle, Clock, XCircle, Eye, MapPin, Phone, Mail, 
 import { useOrders } from "@/hooks/useOrders";
 import { useCart } from "@/hooks/useCart";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -63,8 +64,9 @@ const getStatusIcon = (status: string) => {
 };
 
 const MyOrders = () => {
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  // Get authenticated user ID
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   const { orders, loading, cancelOrder } = useOrders(vendorId, 'vendor');
   const { addToCart } = useCart(vendorId);
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);

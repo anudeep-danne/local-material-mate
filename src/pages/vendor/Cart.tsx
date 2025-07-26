@@ -6,13 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useOrders } from "@/hooks/useOrders";
+import { useAuth } from "@/hooks/useAuth";
 
 const Cart = () => {
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  // Get authenticated user ID
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   
   const { cartItems, loading, total, updateQuantity, removeFromCart, clearCart } = useCart(vendorId);
   const { placeOrder } = useOrders(vendorId, 'vendor');
+  
+  // Debug: Log cart items when they change
+  console.log('🛒 Cart: Current cart items:', cartItems, 'Total:', total);
 
   const subtotal = total;
   const tax = subtotal * 0.05; // 5% tax

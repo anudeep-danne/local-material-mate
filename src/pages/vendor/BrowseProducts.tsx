@@ -9,6 +9,7 @@ import { Star, ShoppingCart, Search, Plus, Minus } from "lucide-react";
 import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 
 const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,8 +17,13 @@ const BrowseProducts = () => {
   const [priceRange, setPriceRange] = useState("all");
   const [quantityStates, setQuantityStates] = useState<Record<string, number>>({});
 
-  // Using vendor ID for demo - in real app this would come from auth
-  const vendorId = "11111111-1111-1111-1111-111111111111";
+  // Get authenticated user ID
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
+  
+  // Debug: Log vendor ID and user info
+  console.log('🛒 BrowseProducts: User info:', user);
+  console.log('🛒 BrowseProducts: Vendor ID being used:', vendorId);
   
   const filters = {
     category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -26,7 +32,10 @@ const BrowseProducts = () => {
   };
 
   const { products, loading, error } = useProducts(filters);
-  const { cartItems, addToCart, updateQuantity } = useCart(vendorId);
+  const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart(vendorId);
+  
+  // Debug: Log cart items when they change
+  console.log('🛒 BrowseProducts: Current cart items:', cartItems);
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,14 +58,52 @@ const BrowseProducts = () => {
   };
 
   // Handle quantity change and immediately update cart
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
+  const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
+    
+    console.log('🛒 BrowseProducts: Handling quantity change - Product ID:', productId, 'New quantity:', newQuantity);
+    console.log('🛒 BrowseProducts: Current cart items:', cartItems.map(item => ({ id: item.id, product_id: item.product_id, quantity: item.quantity })));
+    
+    // Update local state immediately for better UX
     setQuantityStates(prev => ({ ...prev, [productId]: newQuantity }));
+    
     const cartItem = cartItems.find(item => item.product_id === productId);
-    if (cartItem) {
-      updateQuantity(cartItem.id, newQuantity);
+    console.log('🛒 BrowseProducts: Found cart item:', cartItem);
+    
+    if (cartItem && cartItem.id) {
+      console.log('🛒 BrowseProducts: Updating existing cart item:', cartItem.id, 'Current quantity:', cartItem.quantity, 'New quantity:', newQuantity);
+      try {
+        await updateQuantity(cartItem.id, newQuantity);
+        console.log('🛒 BrowseProducts: Successfully updated cart item quantity');
+      } catch (error) {
+        console.error('🛒 BrowseProducts: Error updating cart item quantity:', error);
+        
+        // If update fails, try to remove the item and add it again
+        console.log('🛒 BrowseProducts: Trying remove and re-add approach');
+        try {
+          // Remove the existing item
+          await removeFromCart(cartItem.id);
+          console.log('🛒 BrowseProducts: Removed existing cart item');
+          
+          // Add the item with new quantity
+          await addToCart(productId, newQuantity);
+          console.log('🛒 BrowseProducts: Successfully re-added item with new quantity');
+        } catch (fallbackError) {
+          console.error('🛒 BrowseProducts: Remove and re-add approach failed:', fallbackError);
+          // Revert local state on complete failure
+          setQuantityStates(prev => ({ ...prev, [productId]: cartItem.quantity }));
+        }
+      }
     } else {
-      addToCart(productId, newQuantity);
+      console.log('🛒 BrowseProducts: Adding new item to cart');
+      try {
+        await addToCart(productId, newQuantity);
+        console.log('🛒 BrowseProducts: Successfully added new item to cart');
+      } catch (error) {
+        console.error('🛒 BrowseProducts: Error adding new item to cart:', error);
+        // Revert local state on failure
+        setQuantityStates(prev => ({ ...prev, [productId]: 1 }));
+      }
     }
   };
 
@@ -219,9 +266,17 @@ const BrowseProducts = () => {
                         <Button 
                           variant="vendor" 
                           className="w-full"
-                          onClick={() => {
-                            setQuantityStates(prev => ({ ...prev, [product.id]: 1 }));
-                            addToCart(product.id, 1);
+                          onClick={async () => {
+                            try {
+                              console.log('🛒 BrowseProducts: Add to cart button clicked for product:', product.id);
+                              setQuantityStates(prev => ({ ...prev, [product.id]: 1 }));
+                              await addToCart(product.id, 1);
+                              console.log('🛒 BrowseProducts: Successfully added product to cart:', product.id);
+                            } catch (error) {
+                              console.error('🛒 BrowseProducts: Error adding product to cart:', error);
+                              // Revert local state on failure
+                              setQuantityStates(prev => ({ ...prev, [product.id]: 0 }));
+                            }
                           }}
                           disabled={product.stock === 0}
                         >
