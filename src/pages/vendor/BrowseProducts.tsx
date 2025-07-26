@@ -173,13 +173,13 @@ const BrowseProducts = () => {
                       <CardTitle className="text-lg">{product.name}</CardTitle>
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-foreground">
-                          {product.supplier.business_name || product.supplier.name || "Unknown Supplier"}
+                          {product.supplier.business_name || product.supplier.name || "Supplier Name Not Set"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          📍 {product.supplier.city || 'N/A'}{product.supplier.state ? `, ${product.supplier.state}` : ''}
+                          📍 {product.supplier.city || 'Location Not Set'}{product.supplier.state ? `, ${product.supplier.state}` : ''}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          📞 {product.supplier.phone || 'N/A'}
+                          📞 {product.supplier.phone || 'Phone Not Set'}
                         </p>
                       </div>
                     </CardHeader>

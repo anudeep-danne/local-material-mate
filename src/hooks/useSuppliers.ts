@@ -22,7 +22,22 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
       // Get all suppliers (users with role 'supplier')
       const { data: allSuppliers, error: suppliersError } = await supabase
         .from('users')
-        .select('*')
+        .select(`
+          id,
+          name,
+          email,
+          role,
+          business_name,
+          phone,
+          address,
+          city,
+          state,
+          pincode,
+          latitude,
+          longitude,
+          description,
+          created_at
+        `)
         .eq('role', 'supplier');
 
       if (suppliersError) throw suppliersError;
@@ -58,14 +73,23 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
           const categories = products?.map(p => p.category) || [];
           const uniqueCategories = [...new Set(categories)];
 
-          return {
+          // Process supplier data to handle incomplete information
+          const processedSupplier = {
             ...supplier,
+            // Provide fallbacks for missing data
+            business_name: supplier.business_name || supplier.name || 'Business Name Not Set',
+            phone: supplier.phone || 'Phone Not Set',
+            city: supplier.city || 'Location Not Set',
+            state: supplier.state || '',
+            address: supplier.address || 'Address Not Set',
             averageRating,
             totalReviews: ratings.length,
             productsCount: products?.length || 0,
             averagePrice,
             specialties: uniqueCategories
           };
+
+          return processedSupplier;
         })
       );
 
@@ -147,10 +171,17 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
       fetchSuppliers();
     };
 
+    const handleSupplierUpdate = (event: CustomEvent) => {
+      console.log('🔄 Suppliers: Supplier update received, refreshing suppliers');
+      fetchSuppliers();
+    };
+
     window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    window.addEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
 
     return () => {
       window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+      window.removeEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
     };
   }, []);
 

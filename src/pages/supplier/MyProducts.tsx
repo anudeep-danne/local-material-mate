@@ -6,20 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Edit, Trash2, Plus, Search, Package } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
+import { useAuth } from "@/hooks/useAuth";
 
 const MyProducts = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
 
-  // Using supplier ID for demo - in real app this would come from auth
-  const supplierId = "22222222-2222-2222-2222-222222222222";
-  
-  const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId);
+  const supplierId = user?.id;
+  const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId || "");
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -45,25 +45,23 @@ const MyProducts = () => {
     return "Out of Stock";
   };
 
+
+
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <SupplierSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-2xl font-semibold text-foreground">My Products</h1>
-            <Button 
-              variant="supplier" 
-              className="ml-auto"
-              onClick={() => navigate('/supplier/add-product')}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Product
-            </Button>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+        <SidebarTrigger className="mr-4" />
+        <h1 className="text-2xl font-semibold text-foreground">My Products</h1>
+        <Button 
+          variant="supplier" 
+          className="ml-auto"
+          onClick={() => navigate('/supplier/add-product')}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Product
+        </Button>
+      </header>
 
           {/* Content */}
           <div className="p-6">
@@ -219,10 +217,8 @@ const MyProducts = () => {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default MyProducts;

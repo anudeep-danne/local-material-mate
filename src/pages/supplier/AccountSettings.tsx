@@ -121,60 +121,48 @@ const AccountSettings = () => {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <SupplierSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Account Settings</h1>
-            </header>
-            <div className="p-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="text-center py-8">
-                  <div className="text-lg">Loading profile...</div>
-                </div>
-              </div>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Account Settings</h1>
+        </header>
+        <div className="p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center py-8">
+              <div className="text-lg">Loading profile...</div>
             </div>
-          </main>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   if (error) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <SupplierSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Account Settings</h1>
-            </header>
-            <div className="p-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="text-center py-8">
-                  <div className="text-lg text-destructive mb-4">Error loading profile</div>
-                  <div className="text-sm text-muted-foreground mb-4">{error}</div>
-                  <Button onClick={() => window.location.reload()}>Retry</Button>
-                </div>
-              </div>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Account Settings</h1>
+        </header>
+        <div className="p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center py-8">
+              <div className="text-lg text-destructive mb-4">Error loading profile</div>
+              <div className="text-sm text-muted-foreground mb-4">{error}</div>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
             </div>
-          </main>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <SupplierSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Account Settings</h1>
           </header>
@@ -367,10 +355,8 @@ const AccountSettings = () => {
               </form>
             </div>
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default AccountSettings;

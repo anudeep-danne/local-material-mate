@@ -19,11 +19,25 @@ export const useProducts = (filters?: {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      console.log('🔄 useProducts: Fetching products with filters:', filters);
+      
       let query = supabase
         .from('products')
         .select(`
           *,
-          supplier:users!products_supplier_id_fkey(*)
+          supplier:users!products_supplier_id_fkey(
+            id,
+            name,
+            email,
+            role,
+            business_name,
+            phone,
+            address,
+            city,
+            state,
+            pincode,
+            description
+          )
         `);
 
       if (filters?.category) {
@@ -41,9 +55,26 @@ export const useProducts = (filters?: {
 
       const { data, error } = await query.gt('stock', 0).order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setProducts(data as Product[]);
+      if (error) {
+        console.error('❌ useProducts: Error fetching products:', error);
+        throw error;
+      }
+      
+      console.log('📦 useProducts: Raw product data:', data);
+      
+      // Use the actual supplier data without overriding it
+      const processedData = (data as Product[]).map(product => {
+        console.log('🔍 useProducts: Processing product:', product.name, 'Supplier:', product.supplier);
+        
+        // Return the product with its actual supplier data
+        // Each product will show its real creator's information
+        return product;
+      });
+      
+      console.log('✅ useProducts: Processed products:', processedData);
+      setProducts(processedData);
     } catch (err) {
+      console.error('❌ useProducts: Unexpected error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -61,10 +92,17 @@ export const useProducts = (filters?: {
       fetchProducts();
     };
 
+    const handleSupplierUpdate = (event: CustomEvent) => {
+      console.log('🔄 Products: Supplier update received, refreshing products');
+      fetchProducts();
+    };
+
     window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    window.addEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
 
     return () => {
       window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+      window.removeEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
     };
   }, []);
 

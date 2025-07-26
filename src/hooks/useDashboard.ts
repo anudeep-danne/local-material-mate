@@ -326,8 +326,25 @@ export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') =>
   };
 
   useEffect(() => {
-    if (userId && userRole) {
+    if (userId && userId.trim() !== '' && userRole) {
       fetchStats();
+    } else {
+      // Clear stats if no valid userId
+      setStats({
+        activeOrders: 0,
+        cartItems: 0,
+        monthlySpend: 0,
+        totalSuppliers: 0,
+        totalProducts: 0,
+        pendingOrders: 0,
+        averageRating: 0,
+        monthlyRevenue: 0,
+        totalReviews: 0,
+        recentActivity: [],
+        topProducts: [],
+        topSuppliers: []
+      });
+      setLoading(false);
     }
   }, [userId, userRole]);
 

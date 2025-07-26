@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Package, Inbox, Star, TrendingUp, Plus, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useAuth } from "@/hooks/useAuth";
 
 const SupplierDashboard = () => {
   const navigate = useNavigate();
-  // Using supplier ID for demo - in real app this would come from auth
-  const supplierId = "22222222-2222-2222-2222-222222222222";
-  const { stats, loading, error, refetch } = useDashboard(supplierId, 'supplier');
+  const { user } = useAuth();
+  const supplierId = user?.id;
+  const { stats, loading, error, refetch } = useDashboard(supplierId || "", 'supplier');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -46,57 +47,45 @@ const SupplierDashboard = () => {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <SupplierSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Supplier Dashboard</h1>
-            </header>
-            <div className="p-6">
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full"></div>
-                <span className="ml-3 text-muted-foreground">Loading dashboard...</span>
-              </div>
-            </div>
-          </main>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Supplier Dashboard</h1>
+        </header>
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full"></div>
+            <span className="ml-3 text-muted-foreground">Loading dashboard...</span>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   if (error) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <SupplierSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Supplier Dashboard</h1>
-            </header>
-            <div className="p-6">
-              <div className="text-center py-8">
-                <div className="text-lg text-destructive mb-4">Error loading dashboard</div>
-                <div className="text-sm text-muted-foreground mb-4">{error}</div>
-                <Button onClick={refetch}>Retry</Button>
-              </div>
-            </div>
-          </main>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Supplier Dashboard</h1>
+        </header>
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-destructive mb-4">Error loading dashboard</div>
+            <div className="text-sm text-muted-foreground mb-4">{error}</div>
+            <Button onClick={refetch}>Retry</Button>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <SupplierSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Supplier Dashboard</h1>
             <Button 
@@ -254,10 +243,8 @@ const SupplierDashboard = () => {
               </CardContent>
             </Card>
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default SupplierDashboard;

@@ -7,15 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Upload, Save, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
+import { useAuth } from "@/hooks/useAuth";
 
 const AddProduct = () => {
   const navigate = useNavigate();
-  // Using supplier ID for demo - in real app this would come from auth
-  const supplierId = "22222222-2222-2222-2222-222222222222";
-  const { addProduct, loading } = useSupplierProducts(supplierId);
+  const { user } = useAuth();
+  const supplierId = user?.id;
+  const { addProduct, loading } = useSupplierProducts(supplierId || "");
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -39,6 +40,13 @@ const AddProduct = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if user is logged in
+    if (!user) {
+      alert("You must be logged in to add products.");
+      return;
+    }
+    
     // Convert price and quantity to numbers
     const price = parseFloat(formData.price);
     const stock = parseInt(formData.quantity, 10);
@@ -46,6 +54,9 @@ const AddProduct = () => {
       alert("Please fill all required fields.");
       return;
     }
+    
+    console.log('🔄 AddProduct: Adding product for supplier:', user.id, user.name, user.business_name);
+    
     // Call addProduct from hook
     const success = await addProduct({
       name: formData.name,
@@ -59,26 +70,24 @@ const AddProduct = () => {
     }
   };
 
+
+
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <SupplierSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/supplier/products')}
-              className="mr-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-semibold text-foreground">Add New Product</h1>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+        <SidebarTrigger className="mr-4" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/supplier/products')}
+          className="mr-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Products
+        </Button>
+        <h1 className="text-2xl font-semibold text-foreground">Add New Product</h1>
+      </header>
 
           {/* Content */}
           <div className="p-6">
@@ -232,10 +241,8 @@ const AddProduct = () => {
               </Card>
             </div>
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default AddProduct;

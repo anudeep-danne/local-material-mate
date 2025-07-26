@@ -26,6 +26,8 @@ import EditProduct from "./pages/supplier/EditProduct";
 import IncomingOrders from "./pages/supplier/IncomingOrders";
 import SupplierReviews from "./pages/supplier/SupplierReviews";
 import SupplierAccountSettings from "./pages/supplier/AccountSettings";
+import DebugAuth from "./pages/supplier/DebugAuth";
+import { SupplierLayout } from "@/components/SupplierLayout";
 import { useAuth } from '@/hooks/useAuth';
 
 const queryClient = new QueryClient();
@@ -116,6 +118,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Welcome />} />
       <Route path="/test" element={<TestComponent />} />
+      <Route path="/debug-auth" element={<DebugAuth />} />
       <Route path="/vendor-login" element={user && role === 'vendor' ? <Navigate to="/vendor/dashboard" /> : <VendorLogin />} />
       <Route path="/supplier-login" element={user && role === 'supplier' ? <Navigate to="/supplier/dashboard" /> : <SupplierLogin />} />
       <Route element={<ProtectedRoute role="vendor" />}> 
@@ -127,15 +130,13 @@ function AppRoutes() {
         <Route path="/vendor/reviews" element={<VendorReviews />} />
         <Route path="/vendor/account" element={<VendorAccountSettings />} />
       </Route>
-      <Route element={<ProtectedRoute role="supplier" />}> 
-        <Route path="/supplier/dashboard" element={<SupplierDashboard />} />
-        <Route path="/supplier/products" element={<MyProducts />} />
-        <Route path="/supplier/add-product" element={<AddProduct />} />
-        <Route path="/supplier/edit-product/:productId" element={<EditProduct />} />
-        <Route path="/supplier/orders" element={<IncomingOrders />} />
-        <Route path="/supplier/reviews" element={<SupplierReviews />} />
-        <Route path="/supplier/settings" element={<SupplierAccountSettings />} />
-      </Route>
+      <Route path="/supplier/dashboard" element={<SupplierLayout><SupplierDashboard /></SupplierLayout>} />
+      <Route path="/supplier/products" element={<SupplierLayout><MyProducts /></SupplierLayout>} />
+      <Route path="/supplier/add-product" element={<SupplierLayout><AddProduct /></SupplierLayout>} />
+      <Route path="/supplier/edit-product/:productId" element={<SupplierLayout><EditProduct /></SupplierLayout>} />
+      <Route path="/supplier/orders" element={<SupplierLayout><IncomingOrders /></SupplierLayout>} />
+      <Route path="/supplier/reviews" element={<SupplierLayout><SupplierReviews /></SupplierLayout>} />
+      <Route path="/supplier/settings" element={<SupplierLayout><SupplierAccountSettings /></SupplierLayout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

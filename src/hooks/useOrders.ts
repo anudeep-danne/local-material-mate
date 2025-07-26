@@ -22,10 +22,17 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
       fetchOrders();
     };
 
+    const handleSupplierUpdate = (event: CustomEvent) => {
+      console.log('🔄 Orders: Supplier update received, refreshing orders');
+      fetchOrders();
+    };
+
     window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    window.addEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
 
     return () => {
       window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+      window.removeEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
     };
   }, [userId, userRole]);
 
@@ -38,15 +45,63 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
         .from('orders')
         .select(`
           *,
-          vendor:users!orders_vendor_id_fkey(*),
-          supplier:users!orders_supplier_id_fkey(*),
+          vendor:users!orders_vendor_id_fkey(
+            id,
+            name,
+            email,
+            role,
+            business_name,
+            phone,
+            address,
+            city,
+            state,
+            pincode,
+            description
+          ),
+          supplier:users!orders_supplier_id_fkey(
+            id,
+            name,
+            email,
+            role,
+            business_name,
+            phone,
+            address,
+            city,
+            state,
+            pincode,
+            description
+          ),
           product:products!orders_product_id_fkey(*)
         `)
         .eq(column, userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data as Order[]);
+      
+      // Process the data to handle incomplete user information
+      const processedData = (data as Order[]).map(order => ({
+        ...order,
+        vendor: {
+          ...order.vendor,
+          // Provide fallbacks for missing vendor data
+          business_name: order.vendor?.business_name || order.vendor?.name || 'Business Name Not Set',
+          phone: order.vendor?.phone || 'Phone Not Set',
+          city: order.vendor?.city || 'Location Not Set',
+          state: order.vendor?.state || '',
+          address: order.vendor?.address || 'Address Not Set'
+        },
+        supplier: {
+          ...order.supplier,
+          // Provide fallbacks for missing supplier data
+          business_name: order.supplier?.business_name || order.supplier?.name || 'Business Name Not Set',
+          phone: order.supplier?.phone || 'Phone Not Set',
+          city: order.supplier?.city || 'Location Not Set',
+          state: order.supplier?.state || '',
+          address: order.supplier?.address || 'Address Not Set'
+        }
+      }));
+      
+      setOrders(processedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -236,8 +291,12 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
   };
 
   useEffect(() => {
-    if (userId && userRole) {
+    if (userId && userId.trim() !== '' && userRole) {
       fetchOrders();
+    } else {
+      // Clear orders if no valid userId
+      setOrders([]);
+      setLoading(false);
     }
   }, [userId, userRole]);
 

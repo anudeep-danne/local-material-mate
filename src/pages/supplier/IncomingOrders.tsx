@@ -16,14 +16,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Package, Clock, CheckCircle, User, Truck, XCircle, Eye, MapPin, Phone, Mail, Building } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrders } from "@/hooks/useOrders";
+import { useAuth } from "@/hooks/useAuth";
 import React from "react";
 
 const IncomingOrders = () => {
-  // Using supplier ID for demo - in real app this would come from auth
-  const supplierId = "22222222-2222-2222-2222-222222222222";
-  const { orders, loading, updateOrderStatus } = useOrders(supplierId, 'supplier');
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const supplierId = user?.id;
+  const { orders, loading, updateOrderStatus } = useOrders(supplierId || "", 'supplier');
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
   const [orderToDecline, setOrderToDecline] = useState<string | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);
@@ -37,6 +40,8 @@ const IncomingOrders = () => {
       setOrderStatuses(orders.reduce((acc, order) => ({ ...acc, [order.id]: order.status }), {}));
     }
   }, [orders]);
+
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -304,20 +309,18 @@ const IncomingOrders = () => {
     }
   };
 
+
+
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <SupplierSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
-            <Badge variant="secondary" className="ml-auto">
-              {activeOrders.filter(order => orderStatuses[order.id] === "Pending").length} pending
-            </Badge>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+        <SidebarTrigger className="mr-4" />
+        <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+        <Badge variant="secondary" className="ml-auto">
+          {activeOrders.filter(order => orderStatuses[order.id] === "Pending").length} pending
+        </Badge>
+      </header>
 
           {/* Content */}
           <div className="p-6">
@@ -411,8 +414,6 @@ const IncomingOrders = () => {
               )}
             </div>
           </div>
-        </main>
-      </div>
 
       {/* Order Details Dialog */}
       <AlertDialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
@@ -534,8 +535,8 @@ const IncomingOrders = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default IncomingOrders;

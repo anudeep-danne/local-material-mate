@@ -10,16 +10,17 @@ import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 const EditProduct = () => {
   const navigate = useNavigate();
+  const { user, role, loading: authLoading } = useAuth();
   const { productId } = useParams<{ productId: string }>();
   const [loading, setLoading] = useState(false);
   
-  // Using supplier ID for demo - in real app this would come from auth
-  const supplierId = "22222222-2222-2222-2222-222222222222";
-  const { products, updateProduct } = useSupplierProducts(supplierId);
+  const supplierId = user?.id;
+  const { products, updateProduct } = useSupplierProducts(supplierId || "");
   
   const [formData, setFormData] = useState({
     name: "",

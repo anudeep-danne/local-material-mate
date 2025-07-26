@@ -102,7 +102,13 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
   };
 
   useEffect(() => {
-    fetchReviews();
+    if (userId && userId.trim() !== '' && userRole) {
+      fetchReviews();
+    } else {
+      // Clear reviews if no valid userId
+      setReviews([]);
+      setLoading(false);
+    }
   }, [userId, userRole]);
 
   return {

@@ -94,8 +94,12 @@ export const useSupplierProducts = (supplierId: string) => {
   };
 
   useEffect(() => {
-    if (supplierId) {
+    if (supplierId && supplierId.trim() !== '') {
       fetchProducts();
+    } else {
+      // Clear products if no valid supplierId
+      setProducts([]);
+      setLoading(false);
     }
   }, [supplierId]);
 

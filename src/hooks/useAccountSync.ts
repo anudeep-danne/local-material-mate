@@ -27,6 +27,14 @@ export function useAccountSync() {
         detail: { userId: user.id, userData: updatedUser }
       }));
 
+      // If this is a supplier, also broadcast supplier-specific update
+      if (updatedUser.role === 'supplier') {
+        window.dispatchEvent(new CustomEvent('supplierUpdated', {
+          detail: { userId: user.id, userData: updatedUser }
+        }));
+        console.log('🔄 Supplier update broadcasted');
+      }
+
       console.log('✅ Account data refreshed and broadcasted');
     } catch (err) {
       console.error('Error in account sync:', err);
