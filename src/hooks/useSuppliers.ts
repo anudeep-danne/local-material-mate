@@ -10,7 +10,7 @@ type Supplier = Database['public']['Tables']['users']['Row'] & {
   specialties: string[];
 };
 
-export const useSuppliers = (vendorId?: string) => {
+export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusFilter?: number) => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +69,24 @@ export const useSuppliers = (vendorId?: string) => {
         })
       );
 
-      setSuppliers(suppliersWithDetails);
+      // Apply location filtering if specified
+      let filteredSuppliers = suppliersWithDetails;
+      if (locationFilter && radiusFilter) {
+        filteredSuppliers = suppliersWithDetails.filter(supplier => {
+          if (!supplier.latitude || !supplier.longitude) {
+            return false; // Skip suppliers without location data
+          }
+          
+          // For demo purposes, we'll use a simple city-based filter
+          // In a real app, you'd calculate actual distance using coordinates
+          const supplierLocation = `${supplier.city || ''} ${supplier.state || ''}`.toLowerCase();
+          const filterLocation = locationFilter.toLowerCase();
+          
+          return supplierLocation.includes(filterLocation) || filterLocation.includes(supplierLocation);
+        });
+      }
+
+      setSuppliers(filteredSuppliers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -121,7 +138,7 @@ export const useSuppliers = (vendorId?: string) => {
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [locationFilter, radiusFilter]);
 
   return {
     suppliers,

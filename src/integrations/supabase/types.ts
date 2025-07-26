@@ -213,18 +213,30 @@ export type Database = {
           id: string
           name: string
           role: string
+          city: string | null
+          state: string | null
+          latitude: number | null
+          longitude: number | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           role: string
+          city?: string | null
+          state?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           role?: string
+          city?: string | null
+          state?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Relationships: []
       }

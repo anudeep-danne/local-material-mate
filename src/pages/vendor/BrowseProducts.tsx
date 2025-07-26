@@ -5,15 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Star, ShoppingCart, Search, Minus, Plus } from "lucide-react";
+import { Star, ShoppingCart, Search, Minus, Plus, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
+import { getCurrentLocation } from "@/lib/utils";
 
 const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [radiusFilter, setRadiusFilter] = useState("all");
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Using vendor ID for demo - in real app this would come from auth
   const vendorId = "11111111-1111-1111-1111-111111111111";
@@ -22,10 +26,51 @@ const BrowseProducts = () => {
     category: selectedCategory === "all" ? undefined : selectedCategory,
     priceMin: priceRange === "50-100" ? 50 : priceRange === "100+" ? 100 : undefined,
     priceMax: priceRange === "0-50" ? 50 : priceRange === "50-100" ? 100 : undefined,
+    location: locationFilter || undefined,
+    radius: radiusFilter === "all" ? undefined : parseInt(radiusFilter)
   };
 
   const { products, loading, error } = useProducts(filters);
   const { cartItems, addToCart, updateQuantity } = useCart(vendorId);
+
+  const handleUseMyLocation = async () => {
+    setIsGettingLocation(true);
+    try {
+      const location = await getCurrentLocation();
+      // For demo purposes, we'll set a default city based on coordinates
+      // In a real app, you'd use a reverse geocoding service
+      const cities = [
+        { name: "Delhi", lat: 28.7041, lon: 77.1025 },
+        { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
+        { name: "Ahmedabad", lat: 23.0225, lon: 72.5714 },
+        { name: "Kolkata", lat: 22.5726, lon: 88.3639 }
+      ];
+      
+      // Find the closest city
+      let closestCity = cities[0];
+      let minDistance = Infinity;
+      
+      cities.forEach(city => {
+        const distance = Math.sqrt(
+          Math.pow(location.latitude - city.lat, 2) + 
+          Math.pow(location.longitude - city.lon, 2)
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestCity = city;
+        }
+      });
+      
+      setLocationFilter(closestCity.name);
+      if (radiusFilter === "all") {
+        setRadiusFilter("25"); // Default to 25km radius
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,7 +92,7 @@ const BrowseProducts = () => {
           {/* Content */}
           <div className="p-6">
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -83,15 +128,41 @@ const BrowseProducts = () => {
                 </SelectContent>
               </Select>
 
-              <Select>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Enter location..."
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleUseMyLocation}
+                  disabled={isGettingLocation}
+                  title="Use my location"
+                >
+                  {isGettingLocation ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-vendor-primary border-t-transparent rounded-full"></div>
+                  ) : (
+                    <MapPin className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              <Select value={radiusFilter} onValueChange={setRadiusFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sort by Rating" />
+                  <SelectValue placeholder="Radius" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="rating-high">Highest Rated</SelectItem>
-                  <SelectItem value="rating-low">Lowest Rated</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
+                  <SelectItem value="all">Any Distance</SelectItem>
+                  <SelectItem value="5">Within 5 km</SelectItem>
+                  <SelectItem value="10">Within 10 km</SelectItem>
+                  <SelectItem value="25">Within 25 km</SelectItem>
+                  <SelectItem value="50">Within 50 km</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -139,6 +210,14 @@ const BrowseProducts = () => {
                       <CardTitle className="text-lg">{product.name}</CardTitle>
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">{product.supplier.name}</p>
+                        {(product.supplier.city || product.supplier.state) && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span>
+                              {[product.supplier.city, product.supplier.state].filter(Boolean).join(', ')}
+                            </span>
+                          </div>
+                        )}
                         {product.supplier.averageRating && product.supplier.averageRating > 0 ? (
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
