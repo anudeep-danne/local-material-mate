@@ -52,6 +52,21 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				vendor: {
+					primary: 'hsl(var(--vendor-primary))',
+					'primary-foreground': 'hsl(var(--vendor-primary-foreground))',
+					secondary: 'hsl(var(--vendor-secondary))',
+					accent: 'hsl(var(--vendor-accent))'
+				},
+				supplier: {
+					primary: 'hsl(var(--supplier-primary))',
+					'primary-foreground': 'hsl(var(--supplier-primary-foreground))',
+					secondary: 'hsl(var(--supplier-secondary))',
+					accent: 'hsl(var(--supplier-accent))'
+				},
+				success: 'hsl(var(--success))',
+				warning: 'hsl(var(--warning))',
+				info: 'hsl(var(--info))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
