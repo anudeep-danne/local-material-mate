@@ -352,32 +352,6 @@ const AccountSettings = () => {
 
                 {/* Save Button */}
                 <div className="flex justify-end gap-4">
-                  {/* Test button to bypass form validation */}
-                  <Button 
-                    type="button"
-                    variant="outline" 
-                    size="lg"
-                    onClick={async () => {
-                      console.log('🧪 Test button clicked - bypassing form validation');
-                      const updateData = {
-                        business_name: formData.businessName,
-                        name: formData.ownerName,
-                        email: formData.email,
-                        phone: formData.phone,
-                        address: formData.address,
-                        city: formData.city,
-                        state: formData.state,
-                        pincode: formData.pincode,
-                        description: formData.description
-                      };
-                      console.log('Test update data:', updateData);
-                      const success = await updateProfile(updateData);
-                      console.log('Test update result:', success);
-                    }}
-                  >
-                    Test Save
-                  </Button>
-                  
                   <Button 
                     type="submit"
                     variant="supplier" 

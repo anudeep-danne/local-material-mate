@@ -209,52 +209,52 @@ export type Database = {
       }
       users: {
         Row: {
-          address: string | null
-          business_name: string | null
-          city: string | null
           created_at: string
-          description: string | null
-          email: string | null
           id: string
+          name: string
+          role: string
+          business_name: string | null
+          email: string | null
+          phone: string | null
+          address: string | null
+          city: string | null
+          state: string | null
+          pincode: string | null
           latitude: number | null
           longitude: number | null
-          name: string
-          phone: string | null
-          pincode: string | null
-          role: string
-          state: string | null
+          description: string | null
         }
         Insert: {
-          address?: string | null
-          business_name?: string | null
-          city?: string | null
           created_at?: string
-          description?: string | null
-          email?: string | null
           id?: string
+          name: string
+          role: string
+          business_name?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          pincode?: string | null
           latitude?: number | null
           longitude?: number | null
-          name: string
-          phone?: string | null
-          pincode?: string | null
-          role: string
-          state?: string | null
+          description?: string | null
         }
         Update: {
-          address?: string | null
-          business_name?: string | null
-          city?: string | null
           created_at?: string
-          description?: string | null
-          email?: string | null
           id?: string
+          name?: string
+          role?: string
+          business_name?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          pincode?: string | null
           latitude?: number | null
           longitude?: number | null
-          name?: string
-          phone?: string | null
-          pincode?: string | null
-          role?: string
-          state?: string | null
+          description?: string | null
         }
         Relationships: []
       }

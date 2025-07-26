@@ -2,59 +2,18 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, User, Package } from "lucide-react";
-
-// Sample reviews data
-const reviews = [
-  {
-    id: 1,
-    vendorName: "Raj's Street Food",
-    rating: 5,
-    comment: "Excellent quality vegetables! Always fresh and delivered on time. Highly recommend Kumar Vegetables for all street food vendors.",
-    date: "2024-01-18",
-    orderNumber: "ORD001",
-    product: "Fresh Tomatoes"
-  },
-  {
-    id: 2,
-    vendorName: "Mumbai Chaat Corner",
-    rating: 4,
-    comment: "Good quality onions. Pricing is competitive and delivery was prompt. Will continue ordering from them.",
-    date: "2024-01-15",
-    orderNumber: "ORD002",
-    product: "Fresh Onions"
-  },
-  {
-    id: 3,
-    vendorName: "Delhi Dosa Hub",
-    rating: 5,
-    comment: "Amazing spice quality! The turmeric powder is pure and aromatic. Customer service is also very responsive.",
-    date: "2024-01-12",
-    orderNumber: "ORD003",
-    product: "Turmeric Powder"
-  },
-  {
-    id: 4,
-    vendorName: "Street Food King",
-    rating: 4,
-    comment: "Quality is good but delivery was delayed by one day. Overall satisfied with the products.",
-    date: "2024-01-10",
-    orderNumber: "ORD004",
-    product: "Basmati Rice"
-  },
-  {
-    id: 5,
-    vendorName: "Chaat Express",
-    rating: 3,
-    comment: "Average quality vegetables. Some items were not as fresh as expected. Room for improvement.",
-    date: "2024-01-08",
-    orderNumber: "ORD005",
-    product: "Green Chilies"
-  }
-];
+import { Button } from "@/components/ui/button";
+import { Star, User, Package, RefreshCw } from "lucide-react";
+import { useReviews } from "@/hooks/useReviews";
 
 const SupplierReviews = () => {
-  const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+  // Using supplier ID for demo - in real app this would come from auth
+  const supplierId = "22222222-2222-2222-2222-222222222222";
+  const { reviews, loading, error, refetch } = useReviews(supplierId, 'supplier');
+
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+    : 0;
   const totalReviews = reviews.length;
   
   const ratingCounts = reviews.reduce((acc, review) => {
@@ -81,6 +40,65 @@ const SupplierReviews = () => {
     return "text-destructive";
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getRecentReviewsCount = () => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return reviews.filter(review => new Date(review.created_at) > oneWeekAgo).length;
+  };
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <SupplierSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
+            </header>
+            <div className="p-6">
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full"></div>
+                <span className="ml-3 text-muted-foreground">Loading reviews...</span>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <SupplierSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg text-destructive mb-4">Error loading reviews</div>
+                <div className="text-sm text-muted-foreground mb-4">{error}</div>
+                <Button onClick={refetch}>Retry</Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -91,6 +109,16 @@ const SupplierReviews = () => {
           <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refetch} 
+              className="ml-auto"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </header>
 
           {/* Content */}
@@ -128,7 +156,7 @@ const SupplierReviews = () => {
                           <div 
                             className="bg-supplier-primary h-2 rounded-full transition-all duration-500"
                             style={{ 
-                              width: `${((ratingCounts[rating] || 0) / totalReviews) * 100}%` 
+                              width: `${totalReviews > 0 ? ((ratingCounts[rating] || 0) / totalReviews) * 100 : 0}%` 
                             }}
                           />
                         </div>
@@ -148,17 +176,19 @@ const SupplierReviews = () => {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm">5-star reviews</span>
-                    <span className="font-semibold">{((ratingCounts[5] || 0) / totalReviews * 100).toFixed(0)}%</span>
+                    <span className="font-semibold">
+                      {totalReviews > 0 ? ((ratingCounts[5] || 0) / totalReviews * 100).toFixed(0) : 0}%
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">4+ star reviews</span>
                     <span className="font-semibold">
-                      {(((ratingCounts[5] || 0) + (ratingCounts[4] || 0)) / totalReviews * 100).toFixed(0)}%
+                      {totalReviews > 0 ? (((ratingCounts[5] || 0) + (ratingCounts[4] || 0)) / totalReviews * 100).toFixed(0) : 0}%
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Recent reviews</span>
-                    <span className="font-semibold">{reviews.filter(r => new Date(r.date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length} this week</span>
+                    <span className="font-semibold">{getRecentReviewsCount()} this week</span>
                   </div>
                 </CardContent>
               </Card>
@@ -177,9 +207,9 @@ const SupplierReviews = () => {
                             <User className="h-5 w-5 text-supplier-primary" />
                           </div>
                           <div>
-                            <h4 className="font-semibold">{review.vendorName}</h4>
+                            <h4 className="font-semibold">{review.vendor.name}</h4>
                             <p className="text-sm text-muted-foreground">
-                              Order #{review.orderNumber} • {new Date(review.date).toLocaleDateString()}
+                              Order #{review.order.id.slice(0, 8)} • {formatDate(review.created_at)}
                             </p>
                           </div>
                         </div>
@@ -192,13 +222,15 @@ const SupplierReviews = () => {
                           </div>
                           <Badge variant="secondary" className="text-xs">
                             <Package className="mr-1 h-3 w-3" />
-                            {review.product}
+                            {review.order.product?.name || 'Product'}
                           </Badge>
                         </div>
                       </div>
-                      <p className="text-muted-foreground leading-relaxed">
-                        {review.comment}
-                      </p>
+                      {review.comment && (
+                        <p className="text-muted-foreground leading-relaxed">
+                          {review.comment}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 ))}

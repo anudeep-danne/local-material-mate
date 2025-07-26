@@ -6,7 +6,9 @@ import { toast } from 'sonner';
 type Review = Database['public']['Tables']['reviews']['Row'] & {
   vendor: Database['public']['Tables']['users']['Row'];
   supplier: Database['public']['Tables']['users']['Row'];
-  order: Database['public']['Tables']['orders']['Row'];
+  order: Database['public']['Tables']['orders']['Row'] & {
+    product: Database['public']['Tables']['products']['Row'];
+  };
 };
 
 export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') => {
@@ -23,7 +25,10 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
           *,
           vendor:users!reviews_vendor_id_fkey(*),
           supplier:users!reviews_supplier_id_fkey(*),
-          order:orders!reviews_order_id_fkey(*)
+          order:orders!reviews_order_id_fkey(
+            *,
+            product:products!orders_product_id_fkey(*)
+          )
         `);
 
       if (userId && userRole) {

@@ -2,28 +2,16 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { VendorSidebar } from "@/components/VendorSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Star, TrendingUp, Award } from "lucide-react";
+import { ShoppingCart, Package, Star, TrendingUp, Award, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useSuppliers } from "@/hooks/useSuppliers";
+import { useDashboard } from "@/hooks/useDashboard";
 import { useState, useEffect } from "react";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
   // Using vendor ID for demo - in real app this would come from auth
   const vendorId = "11111111-1111-1111-1111-111111111111";
-  const { suppliers, loading } = useSuppliers(vendorId);
-  const [topSuppliers, setTopSuppliers] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (suppliers.length > 0) {
-      // Sort suppliers by rating and take top 5
-      const sorted = [...suppliers]
-        .filter(s => s.averageRating > 0)
-        .sort((a, b) => b.averageRating - a.averageRating)
-        .slice(0, 5);
-      setTopSuppliers(sorted);
-    }
-  }, [suppliers]);
+  const { stats, loading, error, refetch } = useDashboard(vendorId, 'vendor');
 
   const renderStars = (rating: number) => {
     return [...Array(5)].map((_, i) => (
@@ -38,6 +26,83 @@ const VendorDashboard = () => {
     ));
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Delivered':
+        return 'text-success';
+      case 'Packed':
+        return 'text-warning';
+      case 'Pending':
+        return 'text-muted-foreground';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Vendor Dashboard</h1>
+            </header>
+            <div className="p-6">
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full"></div>
+                <span className="ml-3 text-muted-foreground">Loading dashboard...</span>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Vendor Dashboard</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg text-destructive mb-4">Error loading dashboard</div>
+                <div className="text-sm text-muted-foreground mb-4">{error}</div>
+                <Button onClick={refetch}>Retry</Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -48,6 +113,16 @@ const VendorDashboard = () => {
           <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Vendor Dashboard</h1>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refetch} 
+              className="ml-auto"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </header>
 
           {/* Content */}
@@ -66,8 +141,8 @@ const VendorDashboard = () => {
                   <Package className="h-4 w-4 text-vendor-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-vendor-primary">8</div>
-                  <p className="text-xs text-muted-foreground">+2 from yesterday</p>
+                  <div className="text-2xl font-bold text-vendor-primary">{stats.activeOrders}</div>
+                  <p className="text-xs text-muted-foreground">Orders in progress</p>
                 </CardContent>
               </Card>
 
@@ -77,7 +152,7 @@ const VendorDashboard = () => {
                   <ShoppingCart className="h-4 w-4 text-vendor-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-vendor-primary">12</div>
+                  <div className="text-2xl font-bold text-vendor-primary">{stats.cartItems}</div>
                   <p className="text-xs text-muted-foreground">Ready to order</p>
                 </CardContent>
               </Card>
@@ -88,8 +163,8 @@ const VendorDashboard = () => {
                   <TrendingUp className="h-4 w-4 text-vendor-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-vendor-primary">₹15,240</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
+                  <div className="text-2xl font-bold text-vendor-primary">{formatCurrency(stats.monthlySpend)}</div>
+                  <p className="text-xs text-muted-foreground">This month's total</p>
                 </CardContent>
               </Card>
             </div>
@@ -104,20 +179,15 @@ const VendorDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {loading ? (
-                    <div className="text-center py-4">
-                      <div className="animate-spin h-6 w-6 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
-                      <p className="mt-2 text-sm text-muted-foreground">Loading suppliers...</p>
-                    </div>
-                  ) : topSuppliers.length > 0 ? (
-                    topSuppliers.map((supplier, index) => (
+                  {stats.topSuppliers && stats.topSuppliers.length > 0 ? (
+                    stats.topSuppliers.map((supplier, index) => (
                       <div key={supplier.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-vendor-primary/10 rounded-full flex items-center justify-center">
                             <span className="text-sm font-bold text-vendor-primary">#{index + 1}</span>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-sm">{supplier.name}</h4>
+                            <h4 className="font-semibold text-sm">{supplier.business_name || supplier.name}</h4>
                             <div className="flex items-center gap-1">
                               {renderStars(supplier.averageRating)}
                               <span className="text-xs text-muted-foreground ml-1">
@@ -160,22 +230,21 @@ const VendorDashboard = () => {
                   <CardTitle className="text-vendor-primary">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Order #1234 delivered</span>
-                    <span className="text-success">✓ Completed</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Added 5 items to cart</span>
-                    <span className="text-muted-foreground">2 hours ago</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Order #1233 packed</span>
-                    <span className="text-warning">📦 In Transit</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Reviewed Kumar Vegetables</span>
-                    <span className="text-muted-foreground">1 day ago</span>
-                  </div>
+                  {stats.recentActivity.length > 0 ? (
+                    stats.recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center justify-between text-sm">
+                        <span>{activity.message}</span>
+                        <span className={getStatusColor(activity.status || '')}>
+                          {activity.status || formatTimeAgo(activity.timestamp)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <Package className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
