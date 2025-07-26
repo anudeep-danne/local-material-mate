@@ -74,11 +74,17 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Packed' | 'Delivered') => {
+  const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
+    // Map new statuses to allowed DB values
+    let dbStatus: string = status;
+    if (status === 'Confirmed' || status === 'Packed') dbStatus = 'Packed';
+    else if (status === 'Shipped' || status === 'Out for Delivery' || status === 'Delivered') dbStatus = 'Delivered';
+    else if (status === 'Pending') dbStatus = 'Pending';
+    else if (status === 'Cancelled') dbStatus = 'Cancelled';
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status })
+        .update({ status: dbStatus })
         .eq('id', orderId);
 
       if (error) throw error;

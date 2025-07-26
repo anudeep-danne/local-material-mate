@@ -237,13 +237,13 @@ const VendorDashboard = () => {
                         <span className={getStatusColor(activity.status || '')}>
                           {activity.status || formatTimeAgo(activity.timestamp)}
                         </span>
-                      </div>
+                  </div>
                     ))
                   ) : (
                     <div className="text-center py-4">
                       <Package className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">No recent activity</p>
-                    </div>
+                  </div>
                   )}
                 </CardContent>
               </Card>

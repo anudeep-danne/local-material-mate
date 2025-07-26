@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, CheckCircle, User } from "lucide-react";
+import { Package, Clock, CheckCircle, User, Truck, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useOrders } from "@/hooks/useOrders";
 import React from "react";
@@ -14,6 +14,7 @@ const IncomingOrders = () => {
   const supplierId = "22222222-2222-2222-2222-222222222222";
   const { orders, loading, updateOrderStatus } = useOrders(supplierId, 'supplier');
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
+  
   // Sync orderStatuses with real orders
   React.useEffect(() => {
     if (orders) {
@@ -23,11 +24,19 @@ const IncomingOrders = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "delivered":
+      case "Delivered":
         return "bg-success text-white";
-      case "packed":
+      case "Out for Delivery":
+        return "bg-blue-500 text-white";
+      case "Shipped":
+        return "bg-purple-500 text-white";
+      case "Packed":
         return "bg-warning text-white";
-      case "pending":
+      case "Confirmed":
+        return "bg-green-500 text-white";
+      case "Cancelled":
+        return "bg-destructive text-white";
+      case "Pending":
         return "bg-muted text-muted-foreground";
       default:
         return "bg-muted text-muted-foreground";
@@ -36,14 +45,131 @@ const IncomingOrders = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "delivered":
+      case "Delivered":
         return <CheckCircle className="h-4 w-4" />;
-      case "packed":
+      case "Out for Delivery":
+        return <Truck className="h-4 w-4" />;
+      case "Shipped":
         return <Package className="h-4 w-4" />;
-      case "pending":
+      case "Packed":
+        return <Package className="h-4 w-4" />;
+      case "Confirmed":
+        return <CheckCircle className="h-4 w-4" />;
+      case "Cancelled":
+        return <XCircle className="h-4 w-4" />;
+      case "Pending":
         return <Clock className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    await updateOrderStatus(orderId, "Confirmed");
+  };
+
+  const handleDeclineOrder = async (orderId: string) => {
+    await updateOrderStatus(orderId, "Cancelled");
+  };
+
+  const getNextStatusOptions = (currentStatus: string) => {
+    switch (currentStatus) {
+      case "Pending":
+        return [];
+      case "Confirmed":
+        return ["Packed"];
+      case "Packed":
+        return ["Shipped"];
+      case "Shipped":
+        return ["Out for Delivery"];
+      case "Out for Delivery":
+        return ["Delivered"];
+      default:
+        return [];
+    }
+  };
+
+  const getNextStatusButton = (orderId: string, currentStatus: string) => {
+    switch (currentStatus) {
+      case "Pending":
+        return (
+          <div className="space-y-2">
+            <Button 
+              variant="supplier" 
+              size="sm" 
+              className="w-full"
+              onClick={() => handleAcceptOrder(orderId)}
+            >
+              Accept Order
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-destructive hover:text-destructive"
+              onClick={() => handleDeclineOrder(orderId)}
+            >
+              Decline Order
+            </Button>
+          </div>
+        );
+      case "Confirmed":
+        return (
+          <Button 
+            variant="supplier" 
+            size="sm" 
+            className="w-full"
+            onClick={() => updateOrderStatus(orderId, "Packed")}
+          >
+            Mark as Packed
+          </Button>
+        );
+      case "Packed":
+        return (
+          <Button 
+            variant="supplier" 
+            size="sm" 
+            className="w-full"
+            onClick={() => updateOrderStatus(orderId, "Shipped")}
+          >
+            Mark as Shipped
+          </Button>
+        );
+      case "Shipped":
+        return (
+          <Button 
+            variant="supplier" 
+            size="sm" 
+            className="w-full"
+            onClick={() => updateOrderStatus(orderId, "Out for Delivery")}
+          >
+            Mark as Out for Delivery
+          </Button>
+        );
+      case "Out for Delivery":
+        return (
+          <Button 
+            variant="supplier" 
+            size="sm" 
+            className="w-full"
+            onClick={() => updateOrderStatus(orderId, "Delivered")}
+          >
+            Mark as Delivered
+          </Button>
+        );
+      case "Delivered":
+        return (
+          <div className="text-center text-sm text-muted-foreground">
+            Order Completed
+          </div>
+        );
+      case "Cancelled":
+        return (
+          <div className="text-center text-sm text-destructive">
+            Order Cancelled
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -58,7 +184,7 @@ const IncomingOrders = () => {
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
             <Badge variant="secondary" className="ml-auto">
-              {orders.filter(order => orderStatuses[order.id] === "pending").length} pending
+              {orders.filter(order => orderStatuses[order.id] === "Pending").length} pending
             </Badge>
           </header>
 
@@ -88,7 +214,7 @@ const IncomingOrders = () => {
                         </div>
                         <Badge className={getStatusColor(orderStatuses[order.id])}>
                           {getStatusIcon(orderStatuses[order.id])}
-                          <span className="ml-1 capitalize">{orderStatuses[order.id]}</span>
+                          <span className="ml-1">{orderStatuses[order.id]}</span>
                         </Badge>
                       </div>
                     </CardHeader>
@@ -107,8 +233,7 @@ const IncomingOrders = () => {
                             </div>
                             <div>
                               <span className="font-medium">Contact:</span>
-                              {/* Contact field not available in user type; remove or replace as needed */}
-                              <div></div>
+                              <div>{order.vendor?.email || 'N/A'}</div>
                             </div>
                           </div>
                         </div>
@@ -119,7 +244,7 @@ const IncomingOrders = () => {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>{order.product?.name || order.product_id}</span>
-                              <span>{order.quantity} {order.product && 'unit' in order.product ? (order.product as any).unit : ''}</span>
+                              <span>{order.quantity} units</span>
                             </div>
                           </div>
                           <div className="mt-4 pt-3 border-t">
@@ -133,49 +258,33 @@ const IncomingOrders = () => {
                         {/* Status Management */}
                         <div className="space-y-4">
                           <div>
-                            <h4 className="font-semibold mb-3">Update Status</h4>
-                            <Select 
-                              value={orderStatuses[order.id]} 
-                              onValueChange={(value) => updateOrderStatus(order.id, value as "Pending" | "Packed" | "Delivered")}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="Packed">Packed</SelectItem>
-                                <SelectItem value="Delivered">Delivered</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Button 
-                              variant="supplier" 
-                              size="sm" 
-                              className="w-full"
-                              disabled={orderStatuses[order.id] === "Delivered"}
-                              onClick={() => updateOrderStatus(order.id, orderStatuses[order.id] === "Pending" ? "Packed" : ("Delivered" as "Delivered"))}
-                            >
-                              {orderStatuses[order.id] === "Pending" && "Accept Order"}
-                              {orderStatuses[order.id] === "Packed" && "Mark as Delivered"}
-                              {orderStatuses[order.id] === "Delivered" && "Completed"}
-                            </Button>
-                            
-                            {orderStatuses[order.id] === "Pending" && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="w-full text-destructive hover:text-destructive"
+                            <h4 className="font-semibold mb-3">Order Status</h4>
+                            {orderStatuses[order.id] !== "Pending" && orderStatuses[order.id] !== "Cancelled" && (
+                              <Select 
+                                value={orderStatuses[order.id]} 
+                                onValueChange={(value) => updateOrderStatus(order.id, value as any)}
                               >
-                                Decline Order
-                              </Button>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                  <SelectItem value="Packed">Packed</SelectItem>
+                                  <SelectItem value="Shipped">Shipped</SelectItem>
+                                  <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                                  <SelectItem value="Delivered">Delivered</SelectItem>
+                                </SelectContent>
+                              </Select>
                             )}
                           </div>
 
-                          {orderStatuses[order.id] !== "Pending" && (
+                          <div className="space-y-2">
+                            {getNextStatusButton(order.id, orderStatuses[order.id])}
+                          </div>
+
+                          {orderStatuses[order.id] !== "Pending" && orderStatuses[order.id] !== "Cancelled" && (
                             <div className="text-xs text-muted-foreground">
-                              Status updated
+                              Status can be updated using the dropdown above
                             </div>
                           )}
                         </div>

@@ -21,6 +21,7 @@ import VendorReviews from "./pages/vendor/VendorReviews";
 import SupplierDashboard from "./pages/supplier/SupplierDashboard";
 import MyProducts from "./pages/supplier/MyProducts";
 import AddProduct from "./pages/supplier/AddProduct";
+import EditProduct from "./pages/supplier/EditProduct";
 import IncomingOrders from "./pages/supplier/IncomingOrders";
 import SupplierReviews from "./pages/supplier/SupplierReviews";
 import AccountSettings from "./pages/supplier/AccountSettings";
@@ -128,6 +129,7 @@ function AppRoutes() {
         <Route path="/supplier/dashboard" element={<SupplierDashboard />} />
         <Route path="/supplier/products" element={<MyProducts />} />
         <Route path="/supplier/add-product" element={<AddProduct />} />
+        <Route path="/supplier/edit-product/:productId" element={<EditProduct />} />
         <Route path="/supplier/orders" element={<IncomingOrders />} />
         <Route path="/supplier/reviews" element={<SupplierReviews />} />
         <Route path="/supplier/settings" element={<AccountSettings />} />

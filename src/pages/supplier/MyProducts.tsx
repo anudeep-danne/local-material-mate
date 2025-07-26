@@ -171,7 +171,11 @@ const MyProducts = () => {
                         </div>
 
                         <div className="flex flex-col gap-2">
-                          <Button variant="supplier-outline" size="sm">
+                          <Button 
+                            variant="supplier-outline" 
+                            size="sm"
+                            onClick={() => navigate(`/supplier/edit-product/${product.id}`)}
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </Button>

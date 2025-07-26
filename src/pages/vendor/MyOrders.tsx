@@ -3,17 +3,25 @@ import { VendorSidebar } from "@/components/VendorSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, CheckCircle, Clock } from "lucide-react";
+import { Package, Truck, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { useCart } from "@/hooks/useCart";
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "delivered":
+    case "Delivered":
       return "bg-success text-white";
-    case "packed":
+    case "Out for Delivery":
+      return "bg-blue-500 text-white";
+    case "Shipped":
+      return "bg-purple-500 text-white";
+    case "Packed":
       return "bg-warning text-white";
-    case "pending":
+    case "Confirmed":
+      return "bg-green-500 text-white";
+    case "Cancelled":
+      return "bg-destructive text-white";
+    case "Pending":
       return "bg-muted text-muted-foreground";
     default:
       return "bg-muted text-muted-foreground";
@@ -22,14 +30,22 @@ const getStatusColor = (status: string) => {
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case "delivered":
+    case "Delivered":
       return <CheckCircle className="h-4 w-4" />;
-    case "packed":
+    case "Out for Delivery":
       return <Truck className="h-4 w-4" />;
-    case "pending":
+    case "Shipped":
+      return <Package className="h-4 w-4" />;
+    case "Packed":
+      return <Package className="h-4 w-4" />;
+    case "Confirmed":
+      return <CheckCircle className="h-4 w-4" />;
+    case "Cancelled":
+      return <XCircle className="h-4 w-4" />;
+    case "Pending":
       return <Clock className="h-4 w-4" />;
     default:
-      return <Package className="h-4 w-4" />;
+      return <Clock className="h-4 w-4" />;
   }
 };
 
@@ -43,6 +59,27 @@ const MyOrders = () => {
     if (order.product_id) {
       await addToCart(order.product_id, order.quantity);
     }
+  };
+
+  const getTrackingSteps = (orderStatus: string) => {
+    const steps = [
+      { name: "Order Confirmed", status: "Confirmed" },
+      { name: "Packed", status: "Packed" },
+      { name: "Shipped", status: "Shipped" },
+      { name: "Out for Delivery", status: "Out for Delivery" },
+      { name: "Delivered", status: "Delivered" }
+    ];
+
+    return steps.map((step, index) => {
+      const isCompleted = steps.findIndex(s => s.status === orderStatus) >= index;
+      const isCurrent = step.status === orderStatus;
+      
+      return {
+        ...step,
+        isCompleted,
+        isCurrent
+      };
+    });
   };
 
   return (
@@ -72,91 +109,111 @@ const MyOrders = () => {
                   <Button variant="vendor">Browse Products</Button>
                 </div>
               ) : (
-                orders.map((order) => (
-                  <Card key={order.id} className="overflow-hidden">
-                    <CardHeader className="bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-lg">Order #{order.id}</CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}
-                          </p>
-                        </div>
-                        <Badge className={getStatusColor(order.status)}>
-                          {getStatusIcon(order.status)}
-                          <span className="ml-1 capitalize">{order.status}</span>
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="grid md:grid-cols-3 gap-6">
-                        {/* Order Details */}
-                        <div className="md:col-span-2">
-                          <h4 className="font-semibold mb-3">Supplier: {order.supplier?.name || order.supplier_id}</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>{order.product?.name || order.product_id}</span>
-                              <span>{order.quantity} {order.product && 'unit' in order.product ? (order.product as any).unit : ''}</span>
-                            </div>
-                          </div>
-                          <div className="mt-4 pt-4 border-t">
-                            <div className="flex justify-between font-semibold">
-                              <span>Total Amount</span>
-                              <span className="text-vendor-primary">₹{order.total_amount}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Delivery Info */}
-                        <div className="space-y-4">
+                orders.map((order) => {
+                  const trackingSteps = getTrackingSteps(order.status);
+                  
+                  return (
+                    <Card key={order.id} className="overflow-hidden">
+                      <CardHeader className="bg-muted/30">
+                        <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-semibold mb-2">Delivery Status</h4>
+                            <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                              Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}
+                            </p>
+                          </div>
+                          <Badge className={getStatusColor(order.status)}>
+                            {getStatusIcon(order.status)}
+                            <span className="ml-1">{order.status}</span>
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <div className="grid md:grid-cols-3 gap-6">
+                          {/* Order Details */}
+                          <div className="md:col-span-2">
+                            <h4 className="font-semibold mb-3">Supplier: {order.supplier?.name || order.supplier_id}</h4>
                             <div className="space-y-2">
-                              <div className={`flex items-center gap-2 text-sm ${order.status === "Pending" ? "text-muted-foreground" : "text-success"}`}>
-                                <div className={`w-2 h-2 rounded-full ${order.status === "Pending" ? "bg-muted-foreground" : "bg-success"}`} />
-                                Order Confirmed
+                              <div className="flex justify-between text-sm">
+                                <span>{order.product?.name || order.product_id}</span>
+                                <span>{order.quantity} units</span>
                               </div>
-                              <div className={`flex items-center gap-2 text-sm ${order.status === "Pending" ? "text-muted-foreground" : "text-success"}`}>
-                                <div className={`w-2 h-2 rounded-full ${order.status === "Pending" ? "bg-muted" : "bg-success"}`} />
-                                Packed
-                              </div>
-                              <div className={`flex items-center gap-2 text-sm ${order.status !== "Delivered" ? "text-muted-foreground" : "text-success"}`}>
-                                <div className={`w-2 h-2 rounded-full ${order.status !== "Delivered" ? "bg-muted" : "bg-success"}`} />
-                                Delivered
+                            </div>
+                            <div className="mt-4 pt-4 border-t">
+                              <div className="flex justify-between font-semibold">
+                                <span>Total Amount</span>
+                                <span className="text-vendor-primary">₹{order.total_amount}</span>
                               </div>
                             </div>
                           </div>
-                          {/* You can add expected delivery info here if available */}
-                          <div className="space-y-2">
-                            {order.status !== "Delivered" && (
-                              <Button variant="vendor-outline" size="sm" className="w-full">
-                                Track Order
-                              </Button>
-                            )}
-                            {order.status === "Delivered" && (
-                              <Button 
-                                variant="vendor" 
-                                size="sm" 
-                                className="w-full"
-                                onClick={() => handleReorder(order)}
-                              >
-                                Reorder
-                              </Button>
-                            )}
-                            {order.status !== "Delivered" && (
-                              <Button variant="destructive" size="sm" className="w-full mt-2" onClick={async () => { await cancelOrder(order.id); }}>
-                                Cancel Order
-                              </Button>
-                            )}
+
+                          {/* Delivery Info */}
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-semibold mb-2">Delivery Status</h4>
+                              <div className="space-y-2">
+                                {trackingSteps.map((step, index) => (
+                                  <div 
+                                    key={step.status}
+                                    className={`flex items-center gap-2 text-sm ${
+                                      step.isCompleted 
+                                        ? "text-success" 
+                                        : step.isCurrent 
+                                        ? "text-blue-600 font-medium" 
+                                        : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    <div 
+                                      className={`w-2 h-2 rounded-full ${
+                                        step.isCompleted 
+                                          ? "bg-success" 
+                                          : step.isCurrent 
+                                          ? "bg-blue-600" 
+                                          : "bg-muted"
+                                      }`} 
+                                    />
+                                    {step.name}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="space-y-2">
+                              {order.status !== "Delivered" && order.status !== "Cancelled" && (
+                                <Button variant="vendor-outline" size="sm" className="w-full">
+                                  Track Order
+                                </Button>
+                              )}
+                              {order.status === "Delivered" && (
+                                <Button 
+                                  variant="vendor" 
+                                  size="sm" 
+                                  className="w-full"
+                                  onClick={() => handleReorder(order)}
+                                >
+                                  Reorder
+                                </Button>
+                              )}
+                              {order.status === "Pending" && (
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm" 
+                                  className="w-full mt-2" 
+                                  onClick={async () => { await cancelOrder(order.id); }}
+                                >
+                                  Cancel Order
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </div>
-
           </div>
         </main>
       </div>

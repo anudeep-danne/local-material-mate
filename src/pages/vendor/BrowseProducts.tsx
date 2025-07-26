@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Star, ShoppingCart, Search } from "lucide-react";
+import { Star, ShoppingCart, Search, Plus, Minus } from "lucide-react";
 import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
@@ -14,6 +14,7 @@ const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
+  const [quantityStates, setQuantityStates] = useState<Record<string, number>>({});
 
   // Using vendor ID for demo - in real app this would come from auth
   const vendorId = "11111111-1111-1111-1111-111111111111";
@@ -25,13 +26,44 @@ const BrowseProducts = () => {
   };
 
   const { products, loading, error, refetch } = useProducts(filters);
-  const { addToCart } = useCart(vendorId);
+  const { cartItems, addToCart, updateQuantity } = useCart(vendorId);
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.supplier.business_name && product.supplier.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
     || (product.supplier.name && product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Get current quantity for a product
+  const getCurrentQuantity = (productId: string) => {
+    const cartItem = cartItems.find(item => item.product_id === productId);
+    return cartItem ? cartItem.quantity : 0;
+  };
+
+  // Get quantity state for a product
+  const getQuantityState = (productId: string) => {
+    if (quantityStates[productId] !== undefined) {
+      return quantityStates[productId];
+    }
+    return getCurrentQuantity(productId) || 1;
+  };
+
+  // Handle quantity change and immediately update cart
+  const handleQuantityChange = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    setQuantityStates(prev => ({ ...prev, [productId]: newQuantity }));
+    const cartItem = cartItems.find(item => item.product_id === productId);
+    if (cartItem) {
+      updateQuantity(cartItem.id, newQuantity);
+    } else {
+      addToCart(productId, newQuantity);
+    }
+  };
+
+  // Show quantity counter for a product
+  const showQuantityCounter = (productId: string) => {
+    return getCurrentQuantity(productId) > 0 || quantityStates[productId] !== undefined;
+  };
 
   return (
     <SidebarProvider>
@@ -157,15 +189,42 @@ const BrowseProducts = () => {
                         </Badge>
                       </div>
 
-                      <Button 
-                        variant="vendor" 
-                        className="w-full"
-                        onClick={() => addToCart(product.id)}
-                        disabled={product.stock === 0}
-                      >
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                      </Button>
+                      {showQuantityCounter(product.id) ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQuantityChange(product.id, getQuantityState(product.id) - 1)}
+                            disabled={getQuantityState(product.id) <= 1}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-sm font-medium min-w-[2rem] text-center">
+                            {getQuantityState(product.id)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQuantityChange(product.id, getQuantityState(product.id) + 1)}
+                            disabled={getQuantityState(product.id) >= product.stock}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="vendor" 
+                          className="w-full"
+                          onClick={() => {
+                            setQuantityStates(prev => ({ ...prev, [product.id]: 1 }));
+                            addToCart(product.id, 1);
+                          }}
+                          disabled={product.stock === 0}
+                        >
+                          <ShoppingCart className="mr-2 h-4 w-4" />
+                          {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}

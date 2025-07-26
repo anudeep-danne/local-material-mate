@@ -227,9 +227,9 @@ const SupplierReviews = () => {
                         </div>
                       </div>
                       {review.comment && (
-                        <p className="text-muted-foreground leading-relaxed">
-                          {review.comment}
-                        </p>
+                      <p className="text-muted-foreground leading-relaxed">
+                        {review.comment}
+                      </p>
                       )}
                     </CardContent>
                   </Card>

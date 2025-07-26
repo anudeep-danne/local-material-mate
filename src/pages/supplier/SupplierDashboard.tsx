@@ -212,13 +212,13 @@ const SupplierDashboard = () => {
                         <span className={getStatusColor(activity.status || '')}>
                           {activity.status || formatTimeAgo(activity.timestamp)}
                         </span>
-                      </div>
+                  </div>
                     ))
                   ) : (
                     <div className="text-center py-4">
                       <Inbox className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">No recent activity</p>
-                    </div>
+                  </div>
                   )}
                 </CardContent>
               </Card>
@@ -231,18 +231,18 @@ const SupplierDashboard = () => {
               </CardHeader>
               <CardContent>
                 {stats.topProducts && stats.topProducts.length > 0 ? (
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     {stats.topProducts.map((product) => (
                       <div key={product.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <div>
+                    <div>
                           <h4 className="font-semibold">{product.name}</h4>
                           <p className="text-sm text-muted-foreground">{product.orders} orders this month</p>
-                        </div>
-                        <div className="text-right">
+                    </div>
+                    <div className="text-right">
                           <p className="font-semibold">{formatCurrency(product.revenue)}</p>
                           <p className="text-sm text-success">+{product.growth}%</p>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     ))}
                   </div>
                 ) : (
