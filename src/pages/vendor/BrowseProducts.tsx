@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Star, ShoppingCart, Search } from "lucide-react";
+import { Star, ShoppingCart, Search, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
@@ -25,7 +25,7 @@ const BrowseProducts = () => {
   };
 
   const { products, loading, error } = useProducts(filters);
-  const { addToCart } = useCart(vendorId);
+  const { cartItems, addToCart, updateQuantity } = useCart(vendorId);
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,15 +149,46 @@ const BrowseProducts = () => {
                         </Badge>
                       </div>
 
-                      <Button 
-                        variant="vendor" 
-                        className="w-full"
-                        onClick={() => addToCart(product.id)}
-                        disabled={product.stock === 0}
-                      >
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                      </Button>
+                      {(() => {
+                        const cartItem = cartItems.find((item) => item.product_id === product.id);
+                        if (cartItem) {
+                          return (
+                            <div className="flex items-center justify-center gap-3 bg-white/80 border border-gray-200 rounded-lg py-2 px-4 shadow-sm">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => updateQuantity(cartItem.id, cartItem.quantity - 1)}
+                                disabled={cartItem.quantity <= 1}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <Badge variant="secondary" className="text-base px-3 py-1 rounded-full bg-vendor-primary/10 text-vendor-primary border border-vendor-primary font-bold">
+                                {cartItem.quantity}
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => updateQuantity(cartItem.id, cartItem.quantity + 1)}
+                                disabled={cartItem.quantity >= product.stock}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <Button
+                              variant="vendor"
+                              className="w-full mt-2"
+                              onClick={() => addToCart(product.id)}
+                              disabled={product.stock === 0}
+                            >
+                              <ShoppingCart className="mr-2 h-4 w-4" />
+                              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                            </Button>
+                          );
+                        }
+                      })()}
                     </CardContent>
                   </Card>
                 ))}
