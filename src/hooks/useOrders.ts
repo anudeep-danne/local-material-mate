@@ -95,17 +95,48 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
     try {
       const { error } = await supabase
         .from('orders')
-        .delete()
+        .update({ status: 'Cancelled' })
         .eq('id', orderId);
+      
       if (error) throw error;
       toast.success('Order cancelled successfully');
       await fetchOrders();
-      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to cancel order';
       setError(message);
       toast.error(message);
-      return false;
+    }
+  };
+
+  const getRecentSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          supplier:users!orders_supplier_id_fkey(
+            id,
+            name,
+            role
+          )
+        `)
+        .eq('vendor_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Get unique suppliers
+      const uniqueSuppliers = data.reduce((acc: any[], order) => {
+        const supplier = order.supplier;
+        if (supplier && !acc.find(s => s.id === supplier.id)) {
+          acc.push(supplier);
+        }
+        return acc;
+      }, []);
+
+      return uniqueSuppliers;
+    } catch (err) {
+      console.error('Error fetching recent suppliers:', err);
+      return [];
     }
   };
 
@@ -122,6 +153,7 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
     placeOrder,
     updateOrderStatus,
     cancelOrder,
+    getRecentSuppliers,
     refetch: fetchOrders
   };
 };
