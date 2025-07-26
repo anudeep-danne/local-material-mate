@@ -25,7 +25,7 @@ const BrowseProducts = () => {
     priceMax: priceRange === "0-50" ? 50 : priceRange === "50-100" ? 100 : undefined,
   };
 
-  const { products, loading, error, refetch } = useProducts(filters);
+  const { products, loading, error } = useProducts(filters);
   const { cartItems, addToCart, updateQuantity } = useCart(vendorId);
 
   const filteredProducts = products.filter(product => 
@@ -127,11 +127,7 @@ const BrowseProducts = () => {
                   <SelectItem value="price-high">Price: High to Low</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="flex items-center justify-end">
-                <Button variant="outline" onClick={refetch} disabled={loading}>
-                  Refresh
-                </Button>
-              </div>
+
             </div>
 
             {/* Results */}
