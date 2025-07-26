@@ -15,6 +15,20 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Listen for account updates to refresh orders
+  useEffect(() => {
+    const handleAccountUpdate = (event: CustomEvent) => {
+      console.log('🔄 Orders: Account update received, refreshing orders');
+      fetchOrders();
+    };
+
+    window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    };
+  }, [userId, userRole]);
+
   const fetchOrders = async () => {
     try {
       setLoading(true);

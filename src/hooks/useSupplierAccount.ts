@@ -1,63 +1,144 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
-import { toast } from 'sonner';
+import { useAuth } from './useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { useAccountSync } from './useAccountSync';
 
-type SupplierAccount = Database['public']['Tables']['users']['Row'];
+export interface SupplierAccountData {
+  id: string;
+  name: string;
+  email: string | null;
+  business_name: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  description: string | null;
+  role: string;
+  created_at: string;
+  updated_at?: string;
+}
 
-export const useSupplierAccount = (supplierId: string) => {
-  const [account, setAccount] = useState<SupplierAccount | null>(null);
+export function useSupplierAccount() {
+  const [accountData, setAccountData] = useState<SupplierAccountData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { updateAccountAndSync } = useAccountSync();
 
-  const fetchAccount = async () => {
+  // Fetch supplier account data
+  const fetchAccountData = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', supplierId)
+        .eq('id', user.id)
         .single();
 
-      if (error) throw error;
-      setAccount(data);
+      if (fetchError) {
+        console.error('Error fetching supplier account data:', fetchError);
+        setError(fetchError.message);
+        toast({
+          title: "Error",
+          description: "Failed to load account information",
+          variant: "destructive",
+        });
+      } else {
+        setAccountData(data);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Unexpected error fetching account data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load account information');
+      toast({
+        title: "Error",
+        description: "Failed to load account information",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const updateAccount = async (updates: Partial<SupplierAccount>) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', supplierId);
-
-      if (error) throw error;
-      toast.success('Account updated successfully');
-      await fetchAccount();
-      return true;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update account';
-      setError(message);
-      toast.error(message);
+  // Update supplier account data
+  const updateAccountData = async (updates: Partial<SupplierAccountData>) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
       return false;
     }
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      // Remove updated_at from updates since it might not exist in the database yet
+      const { updated_at, ...updateData } = updates;
+
+      console.log('🔍 Updating supplier account data:', { userId: user.id, updateData });
+
+      // Use the sync function to update and broadcast changes
+      const success = await updateAccountAndSync(updateData);
+
+      if (!success) {
+        setError('Failed to update account data');
+        toast({
+          title: "Error",
+          description: "Failed to save changes",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Update local state
+      setAccountData(prev => prev ? { ...prev, ...updates } : null);
+      
+      toast({
+        title: "Success",
+        description: "Account information updated successfully and synchronized across the app",
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Unexpected error updating account data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save changes');
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // Fetch data on mount and when user changes
   useEffect(() => {
-    if (supplierId) {
-      fetchAccount();
-    }
-  }, [supplierId]);
+    fetchAccountData();
+  }, [user?.id]);
 
   return {
-    account,
+    accountData,
     loading,
+    saving,
     error,
-    updateAccount,
-    refetch: fetchAccount
+    fetchAccountData,
+    updateAccountData,
   };
-};
+}

@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Package, Clock, CheckCircle, User, Truck, XCircle } from "lucide-react";
+import { Package, Clock, CheckCircle, User, Truck, XCircle, Eye, MapPin, Phone, Mail, Building } from "lucide-react";
 import { useState } from "react";
 import { useOrders } from "@/hooks/useOrders";
 import React from "react";
@@ -26,6 +26,7 @@ const IncomingOrders = () => {
   const { orders, loading, updateOrderStatus } = useOrders(supplierId, 'supplier');
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
   const [orderToDecline, setOrderToDecline] = useState<string | null>(null);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);
   
   // Filter out cancelled orders from incoming orders
   const activeOrders = orders.filter(order => order.status !== 'Cancelled');
@@ -110,10 +111,21 @@ const IncomingOrders = () => {
   };
 
   const getNextStatusButton = (orderId: string, currentStatus: string) => {
+    const order = orders.find(o => o.id === orderId);
+    
     switch (currentStatus) {
       case "Pending":
         return (
           <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
             <Button 
               variant="supplier" 
               size="sm" 
@@ -155,70 +167,136 @@ const IncomingOrders = () => {
         );
       case "Confirmed":
         return (
-          <Button 
-            variant="supplier" 
-            size="sm" 
-            className="w-full"
-            onClick={async () => {
-              await updateOrderStatus(orderId, "Packed");
-              setOrderStatuses(prev => ({ ...prev, [orderId]: "Packed" }));
-            }}
-          >
-            Mark as Packed
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <Button 
+              variant="supplier" 
+              size="sm" 
+              className="w-full"
+              onClick={async () => {
+                await updateOrderStatus(orderId, "Packed");
+                setOrderStatuses(prev => ({ ...prev, [orderId]: "Packed" }));
+              }}
+            >
+              Mark as Packed
+            </Button>
+          </div>
         );
       case "Packed":
         return (
-          <Button 
-            variant="supplier" 
-            size="sm" 
-            className="w-full"
-            onClick={async () => {
-              await updateOrderStatus(orderId, "Shipped");
-              setOrderStatuses(prev => ({ ...prev, [orderId]: "Shipped" }));
-            }}
-          >
-            Mark as Shipped
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <Button 
+              variant="supplier" 
+              size="sm" 
+              className="w-full"
+              onClick={async () => {
+                await updateOrderStatus(orderId, "Shipped");
+                setOrderStatuses(prev => ({ ...prev, [orderId]: "Shipped" }));
+              }}
+            >
+              Mark as Shipped
+            </Button>
+          </div>
         );
       case "Shipped":
         return (
-          <Button 
-            variant="supplier" 
-            size="sm" 
-            className="w-full"
-            onClick={async () => {
-              await updateOrderStatus(orderId, "Out for Delivery");
-              setOrderStatuses(prev => ({ ...prev, [orderId]: "Out for Delivery" }));
-            }}
-          >
-            Mark as Out for Delivery
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <Button 
+              variant="supplier" 
+              size="sm" 
+              className="w-full"
+              onClick={async () => {
+                await updateOrderStatus(orderId, "Out for Delivery");
+                setOrderStatuses(prev => ({ ...prev, [orderId]: "Out for Delivery" }));
+              }}
+            >
+              Mark as Out for Delivery
+            </Button>
+          </div>
         );
       case "Out for Delivery":
         return (
-          <Button 
-            variant="supplier" 
-            size="sm" 
-            className="w-full"
-            onClick={async () => {
-              await updateOrderStatus(orderId, "Delivered");
-              setOrderStatuses(prev => ({ ...prev, [orderId]: "Delivered" }));
-            }}
-          >
-            Mark as Delivered
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <Button 
+              variant="supplier" 
+              size="sm" 
+              className="w-full"
+              onClick={async () => {
+                await updateOrderStatus(orderId, "Delivered");
+                setOrderStatuses(prev => ({ ...prev, [orderId]: "Delivered" }));
+              }}
+            >
+              Mark as Delivered
+            </Button>
+          </div>
         );
       case "Delivered":
         return (
-          <div className="text-center text-sm text-muted-foreground">
-            Order Completed
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <div className="text-center text-sm text-muted-foreground">
+              Order Completed
+            </div>
           </div>
         );
       case "Cancelled":
         return (
-          <div className="text-center text-sm text-destructive">
-            Order Cancelled
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setSelectedOrderDetails(order)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <div className="text-center text-sm text-destructive">
+              Order Cancelled
+            </div>
           </div>
         );
       default:
@@ -272,25 +350,7 @@ const IncomingOrders = () => {
                       </div>
                     </CardHeader>
                     <CardContent className="p-6">
-                      <div className="grid md:grid-cols-3 gap-6">
-                        {/* Vendor Details */}
-                        <div>
-                          <h4 className="font-semibold mb-3 flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            Vendor Details
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <span className="font-medium">Name:</span>
-                              <div>{order.vendor?.name || order.vendor_id}</div>
-                            </div>
-                            <div>
-                              <span className="font-medium">Contact:</span>
-                              <div>{order.vendor?.email || 'N/A'}</div>
-                            </div>
-                          </div>
-                        </div>
-
+                      <div className="space-y-4">
                         {/* Order Items */}
                         <div>
                           <h4 className="font-semibold mb-3">Order Items</h4>
@@ -353,6 +413,127 @@ const IncomingOrders = () => {
           </div>
         </main>
       </div>
+
+      {/* Order Details Dialog */}
+      <AlertDialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Order Details</AlertDialogTitle>
+          </AlertDialogHeader>
+          {selectedOrderDetails && (
+            <div className="space-y-6">
+              {/* Order Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Order Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Order ID:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.id}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Order Date:</span>
+                    <div className="text-muted-foreground">
+                      {new Date(selectedOrderDetails.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Status:</span>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(selectedOrderDetails.status)}>
+                        {getStatusIcon(selectedOrderDetails.status)}
+                        <span className="ml-1">{selectedOrderDetails.status}</span>
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Total Amount:</span>
+                    <div className="text-supplier-primary font-semibold">₹{selectedOrderDetails.total_amount}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Product Information</h3>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium">Product Name:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.product?.name || selectedOrderDetails.product_id}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Quantity:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.quantity} units</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Unit Price:</span>
+                    <div className="text-muted-foreground">₹{selectedOrderDetails.product?.price || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vendor Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Vendor Information
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Business Name:</span>
+                      <div className="text-muted-foreground">{selectedOrderDetails.vendor?.business_name || selectedOrderDetails.vendor?.name || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Email:</span>
+                      <div className="text-muted-foreground">{selectedOrderDetails.vendor?.email || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Phone:</span>
+                      <div className="text-muted-foreground">{selectedOrderDetails.vendor?.phone || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Location:</span>
+                      <div className="text-muted-foreground">
+                        {selectedOrderDetails.vendor?.city || 'N/A'}{selectedOrderDetails.vendor?.state ? `, ${selectedOrderDetails.vendor.state}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Address:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.vendor?.address || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancellation Info */}
+              {selectedOrderDetails.status === 'Cancelled' && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg text-destructive">Cancellation Information</h3>
+                  <div className="text-sm">
+                    <span className="font-medium">Cancelled by:</span>
+                    <div className="text-muted-foreground">
+                      {selectedOrderDetails.cancelled_by === 'vendor' ? 'Vendor' : 'You'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 };

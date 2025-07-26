@@ -140,6 +140,20 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
     fetchSuppliers();
   }, [locationFilter, radiusFilter]);
 
+  // Listen for account updates to refresh supplier data
+  useEffect(() => {
+    const handleAccountUpdate = (event: CustomEvent) => {
+      console.log('🔄 Suppliers: Account update received, refreshing suppliers');
+      fetchSuppliers();
+    };
+
+    window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    };
+  }, []);
+
   return {
     suppliers,
     loading,

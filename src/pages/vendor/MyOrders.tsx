@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Package, Truck, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Package, Truck, CheckCircle, Clock, XCircle, Eye, MapPin, Phone, Mail, Building } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { useCart } from "@/hooks/useCart";
 import { useState } from "react";
@@ -69,6 +69,8 @@ const MyOrders = () => {
   const { addToCart } = useCart(vendorId);
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);
+  const [selectedOrderTracking, setSelectedOrderTracking] = useState<any>(null);
   
   // Filter orders based on selected status
   const getFilteredOrders = () => {
@@ -113,34 +115,31 @@ const MyOrders = () => {
       new Date(order.updated_at) > thirtyDaysAgo
     );
   };
-  
+
   const handleReorder = async (order: any) => {
-    if (order.product_id) {
-      await addToCart(order.product_id, order.quantity);
-    }
+    await addToCart(order.product_id, order.quantity);
   };
 
   const handleCancelOrder = async (orderId: string) => {
-    try {
-      await cancelOrder(orderId);
-      setOrderToCancel(null); // Close the dialog
-      // The useOrders hook will automatically refetch and update the UI
-    } catch (error) {
-      console.error('Failed to cancel order:', error);
-    }
+    await cancelOrder(orderId);
+    setOrderToCancel(null);
   };
 
   const getTrackingSteps = (orderStatus: string) => {
     const steps = [
-      { name: "Order Confirmed", status: "Confirmed" },
-      { name: "Packed", status: "Packed" },
-      { name: "Shipped", status: "Shipped" },
-      { name: "Out for Delivery", status: "Out for Delivery" },
-      { name: "Delivered", status: "Delivered" }
+      { status: 'Pending', name: 'Order Placed' },
+      { status: 'Confirmed', name: 'Order Confirmed' },
+      { status: 'Packed', name: 'Order Packed' },
+      { status: 'Shipped', name: 'Order Shipped' },
+      { status: 'Out for Delivery', name: 'Out for Delivery' },
+      { status: 'Delivered', name: 'Delivered' }
     ];
 
-    return steps.map((step, index) => {
-      const isCompleted = steps.findIndex(s => s.status === orderStatus) >= index;
+    return steps.map(step => {
+      const stepIndex = steps.findIndex(s => s.status === step.status);
+      const currentIndex = steps.findIndex(s => s.status === orderStatus);
+      
+      const isCompleted = stepIndex < currentIndex;
       const isCurrent = step.status === orderStatus;
       
       return {
@@ -220,7 +219,6 @@ const MyOrders = () => {
               ) : (
                 <div className="space-y-6">
                     {filteredOrders.map((order) => {
-                      const trackingSteps = getTrackingSteps(order.status);
                       const isCancelled = order.status === 'Cancelled';
                       
                       return (
@@ -240,10 +238,9 @@ const MyOrders = () => {
                             </div>
                           </CardHeader>
                           <CardContent className="p-6">
-                            <div className="grid md:grid-cols-3 gap-6">
+                            <div className="space-y-4">
                               {/* Order Details */}
-                              <div className="md:col-span-2">
-                                <h4 className="font-semibold mb-3">Supplier: {order.supplier?.name || order.supplier_id}</h4>
+                              <div>
                                 <div className="space-y-2">
                                   <div className="flex justify-between text-sm">
                                     <span>{order.product?.name || order.product_id}</span>
@@ -268,93 +265,82 @@ const MyOrders = () => {
                                 )}
                               </div>
 
-                              {/* Delivery Info */}
-                              <div className="space-y-4">
-                                {!isCancelled && (
-                                  <div>
-                                    <h4 className="font-semibold mb-2">Delivery Status</h4>
-                                    <div className="space-y-2">
-                                      {trackingSteps.map((step, index) => (
-                                        <div 
-                                          key={step.status}
-                                          className={`flex items-center gap-2 text-sm ${
-                                            step.isCompleted 
-                                              ? "text-success" 
-                                              : step.isCurrent 
-                                              ? "text-blue-600 font-medium" 
-                                              : "text-muted-foreground"
-                                          }`}
-                                        >
-                                          <div 
-                                            className={`w-2 h-2 rounded-full ${
-                                              step.isCompleted 
-                                                ? "bg-success" 
-                                                : step.isCurrent 
-                                                ? "bg-blue-600" 
-                                                : "bg-muted"
-                                            }`} 
-                                          />
-                                          {step.name}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
+                              {/* Action Buttons */}
+                              <div className="space-y-2">
+                                {/* View Details Button */}
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="w-full"
+                                  onClick={() => setSelectedOrderDetails(order)}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </Button>
+                                
+                                {/* Track Order Button */}
+                                {!isCancelled && order.status !== "Delivered" && (
+                                  <Button 
+                                    variant="vendor-outline" 
+                                    size="sm" 
+                                    className="w-full"
+                                    onClick={() => setSelectedOrderTracking(order)}
+                                  >
+                                    <Truck className="h-4 w-4 mr-2" />
+                                    Track Order
+                                  </Button>
                                 )}
                                 
-                                {/* Action Buttons */}
-                                <div className="space-y-2">
-                                  {!isCancelled && order.status !== "Delivered" && (
-                                    <Button variant="vendor-outline" size="sm" className="w-full">
-                                      Track Order
-                                    </Button>
-                                  )}
-                                  {(order.status === "Delivered" || isCancelled) && (
-                                    <Button 
-                                      variant="vendor" 
-                                      size="sm" 
-                                      className="w-full"
-                                      onClick={() => handleReorder(order)}
-                                    >
-                                      Reorder
-                                    </Button>
-                                  )}
-                                  {order.status === "Pending" && (
-                                    <AlertDialog open={orderToCancel === order.id} onOpenChange={(open) => !open && setOrderToCancel(null)}>
-                                      <AlertDialogTrigger asChild>
-                                        <Button 
-                                          variant="destructive" 
-                                          size="sm" 
-                                          className="w-full mt-2"
-                                          onClick={() => setOrderToCancel(order.id)}
+                                {/* Reorder Button */}
+                                {(order.status === "Delivered" || isCancelled) && (
+                                  <Button 
+                                    variant="vendor" 
+                                    size="sm" 
+                                    className="w-full"
+                                    onClick={() => handleReorder(order)}
+                                  >
+                                    Reorder
+                                  </Button>
+                                )}
+                                
+                                {/* Cancel Order Button */}
+                                {order.status === "Pending" && (
+                                  <AlertDialog open={orderToCancel === order.id} onOpenChange={(open) => !open && setOrderToCancel(null)}>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        variant="destructive" 
+                                        size="sm" 
+                                        className="w-full mt-2"
+                                        onClick={() => setOrderToCancel(order.id)}
+                                      >
+                                        Cancel Order
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to cancel this order? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Keep Order</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                          onClick={() => handleCancelOrder(order.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                         >
                                           Cancel Order
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Cancel Order</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Are you sure you want to cancel this order? This action cannot be undone.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Keep Order</AlertDialogCancel>
-                                          <AlertDialogAction 
-                                            onClick={() => handleCancelOrder(order.id)}
-                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          >
-                                            Cancel Order
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  )}
-                                  {isCancelled && (
-                                    <div className="text-center text-sm text-muted-foreground">
-                                      Order was cancelled
-                                    </div>
-                                  )}
-                                </div>
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                                
+                                {isCancelled && (
+                                  <div className="text-center text-sm text-muted-foreground">
+                                    Order was cancelled
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </CardContent>
@@ -367,6 +353,205 @@ const MyOrders = () => {
           </div>
         </main>
       </div>
+
+      {/* Order Details Dialog */}
+      <AlertDialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Order Details</AlertDialogTitle>
+          </AlertDialogHeader>
+          {selectedOrderDetails && (
+            <div className="space-y-6">
+              {/* Order Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Order Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Order ID:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.id}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Order Date:</span>
+                    <div className="text-muted-foreground">
+                      {new Date(selectedOrderDetails.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Status:</span>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(selectedOrderDetails.status)}>
+                        {getStatusIcon(selectedOrderDetails.status)}
+                        <span className="ml-1">{selectedOrderDetails.status}</span>
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Total Amount:</span>
+                    <div className="text-vendor-primary font-semibold">₹{selectedOrderDetails.total_amount}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Product Information</h3>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium">Product Name:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.product?.name || selectedOrderDetails.product_id}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Quantity:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.quantity} units</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Unit Price:</span>
+                    <div className="text-muted-foreground">₹{selectedOrderDetails.product?.price || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Supplier Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Supplier Information
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Business Name:</span>
+                      <div className="text-muted-foreground">{selectedOrderDetails.supplier?.business_name || selectedOrderDetails.supplier?.name || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Email:</span>
+                      <div className="text-muted-foreground">{selectedOrderDetails.supplier?.email || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Phone:</span>
+                      <div className="text-muted-foreground">{selectedOrderDetails.supplier?.phone || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">Location:</span>
+                      <div className="text-muted-foreground">
+                        {selectedOrderDetails.supplier?.city || 'N/A'}{selectedOrderDetails.supplier?.state ? `, ${selectedOrderDetails.supplier.state}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Address:</span>
+                    <div className="text-muted-foreground">{selectedOrderDetails.supplier?.address || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancellation Info */}
+              {selectedOrderDetails.status === 'Cancelled' && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg text-destructive">Cancellation Information</h3>
+                  <div className="text-sm">
+                    <span className="font-medium">Cancelled by:</span>
+                    <div className="text-muted-foreground">
+                      {selectedOrderDetails.cancelled_by === 'vendor' ? 'You' : 'Supplier'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Order Tracking Dialog */}
+      <AlertDialog open={!!selectedOrderTracking} onOpenChange={(open) => !open && setSelectedOrderTracking(null)}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Order Tracking</AlertDialogTitle>
+          </AlertDialogHeader>
+          {selectedOrderTracking && (
+            <div className="space-y-6">
+              {/* Order Info */}
+              <div className="space-y-2">
+                <h3 className="font-semibold">Order #{selectedOrderTracking.id}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Placed on {new Date(selectedOrderTracking.created_at).toLocaleDateString()}
+                </p>
+              </div>
+
+              {/* Tracking Steps */}
+              <div className="space-y-4">
+                <h3 className="font-semibold">Delivery Status</h3>
+                <div className="space-y-3">
+                  {getTrackingSteps(selectedOrderTracking.status).map((step, index) => (
+                    <div 
+                      key={step.status}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${
+                        step.isCompleted 
+                          ? "bg-success/10 border-success/20" 
+                          : step.isCurrent 
+                          ? "bg-blue-50 border-blue-200" 
+                          : "bg-muted/50 border-muted"
+                      }`}
+                    >
+                      <div 
+                        className={`w-3 h-3 rounded-full ${
+                          step.isCompleted 
+                            ? "bg-success" 
+                            : step.isCurrent 
+                            ? "bg-blue-600" 
+                            : "bg-muted"
+                        }`} 
+                      />
+                      <div className="flex-1">
+                        <div className={`font-medium ${
+                          step.isCompleted 
+                            ? "text-success" 
+                            : step.isCurrent 
+                            ? "text-blue-600" 
+                            : "text-muted-foreground"
+                        }`}>
+                          {step.name}
+                        </div>
+                        {step.isCurrent && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Currently in progress
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Estimated Delivery */}
+              {selectedOrderTracking.status !== 'Delivered' && selectedOrderTracking.status !== 'Cancelled' && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 mb-2">Estimated Delivery</h4>
+                  <p className="text-sm text-blue-700">
+                    Your order is expected to be delivered within 2-3 business days.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 };

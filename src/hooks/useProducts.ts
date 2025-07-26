@@ -54,5 +54,19 @@ export const useProducts = (filters?: {
     fetchProducts();
   }, [JSON.stringify(filters)]);
 
+  // Listen for account updates to refresh product data
+  useEffect(() => {
+    const handleAccountUpdate = (event: CustomEvent) => {
+      console.log('🔄 Products: Account update received, refreshing products');
+      fetchProducts();
+    };
+
+    window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    };
+  }, []);
+
   return { products, loading, error, refetch: fetchProducts };
 };

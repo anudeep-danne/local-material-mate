@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useAccountSync } from './useAccountSync';
 
 export interface VendorAccountData {
   id: string;
@@ -28,6 +29,7 @@ export function useVendorAccount() {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { updateAccountAndSync } = useAccountSync();
 
   // Fetch vendor account data
   const fetchAccountData = async () => {
@@ -90,28 +92,14 @@ export function useVendorAccount() {
 
       console.log('🔍 Updating vendor account data:', { userId: user.id, updateData });
 
-      const { error: updateError } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', user.id);
+      // Use the sync function to update and broadcast changes
+      const success = await updateAccountAndSync(updateData);
 
-      if (updateError) {
-        console.error('Error updating vendor account data:', updateError);
-        setError(updateError.message);
-        
-        // Provide more specific error messages
-        let errorMessage = "Failed to save changes";
-        if (updateError.message.includes("permission")) {
-          errorMessage = "Permission denied. Please check your authentication.";
-        } else if (updateError.message.includes("constraint")) {
-          errorMessage = "Invalid data format. Please check your input.";
-        } else if (updateError.message.includes("column")) {
-          errorMessage = "Database schema issue. Please contact support.";
-        }
-        
+      if (!success) {
+        setError('Failed to update account data');
         toast({
           title: "Error",
-          description: errorMessage,
+          description: "Failed to save changes",
           variant: "destructive",
         });
         return false;
@@ -122,7 +110,7 @@ export function useVendorAccount() {
       
       toast({
         title: "Success",
-        description: "Account information updated successfully",
+        description: "Account information updated successfully and synchronized across the app",
       });
       
       return true;

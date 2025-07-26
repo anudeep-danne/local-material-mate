@@ -130,7 +130,7 @@ const VendorReviews = () => {
                       <SelectContent>
                         {recentSuppliers.map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
+                            {supplier.business_name || supplier.name} - {supplier.city || 'N/A'}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -186,9 +186,9 @@ const VendorReviews = () => {
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between mb-4">
                           <div>
-                            <h3 className="font-semibold text-lg">{review.supplier.name}</h3>
+                            <h3 className="font-semibold text-lg">{review.supplier.business_name || review.supplier.name}</h3>
                             <p className="text-sm text-muted-foreground">
-                              Order #{review.order_id} • {new Date(review.created_at).toLocaleDateString()}
+                              {review.supplier.city || 'N/A'} • Order #{review.order_id} • {new Date(review.created_at).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="flex items-center gap-1">
