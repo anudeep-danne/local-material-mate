@@ -45,8 +45,6 @@ const IncomingOrders = () => {
         return "bg-purple-500 text-white";
       case "Packed":
         return "bg-warning text-white";
-      case "Confirmed":
-        return "bg-green-500 text-white";
       case "Cancelled":
         return "bg-destructive text-white";
       case "Pending":
@@ -67,8 +65,6 @@ const IncomingOrders = () => {
         return <Package className="h-4 w-4" />;
       case "Packed":
         return <Package className="h-4 w-4" />;
-      case "Confirmed":
-        return <CheckCircle className="h-4 w-4" />;
       case "Cancelled":
         return <XCircle className="h-4 w-4" />;
       case "Pending":
@@ -81,10 +77,10 @@ const IncomingOrders = () => {
   // Accept order function
   const handleAcceptOrder = async (orderId: string) => {
     try {
-      await updateOrderStatus(orderId, "Confirmed");
+      await updateOrderStatus(orderId, "Packed");
       toast({
         title: "Success",
-        description: "Order accepted successfully",
+        description: "Order accepted and marked as packed",
       });
     } catch (error) {
       console.error('❌ Failed to accept order:', error);
@@ -118,7 +114,6 @@ const IncomingOrders = () => {
   // Get next status in sequence
   const getNextStatus = (currentStatus: string) => {
     switch (currentStatus) {
-      case "Confirmed": return "Packed";
       case "Packed": return "Shipped";
       case "Shipped": return "Out for Delivery";
       case "Out for Delivery": return "Delivered";
@@ -129,7 +124,6 @@ const IncomingOrders = () => {
   // Get button label for next status
   const getNextStatusLabel = (currentStatus: string) => {
     switch (currentStatus) {
-      case "Confirmed": return "Mark as Packed";
       case "Packed": return "Mark as Shipped";
       case "Shipped": return "Mark as Out for Delivery";
       case "Out for Delivery": return "Mark as Delivered";
@@ -211,7 +205,6 @@ const IncomingOrders = () => {
             </AlertDialog>
           </div>
         );
-      case "Confirmed":
       case "Packed":
       case "Shipped":
       case "Out for Delivery":

@@ -31,8 +31,6 @@ const getStatusColor = (status: string) => {
       return "bg-purple-500 text-white";
     case "Packed":
       return "bg-warning text-white";
-    case "Confirmed":
-      return "bg-green-500 text-white";
     case "Cancelled":
       return "bg-destructive text-white";
     case "Pending":
@@ -52,8 +50,6 @@ const getStatusIcon = (status: string) => {
       return <Package className="h-4 w-4" />;
     case "Packed":
       return <Package className="h-4 w-4" />;
-    case "Confirmed":
-      return <CheckCircle className="h-4 w-4" />;
     case "Cancelled":
       return <XCircle className="h-4 w-4" />;
     case "Pending":
@@ -159,7 +155,6 @@ const MyOrders = () => {
   const getTrackingSteps = (orderStatus: string) => {
     const steps = [
       { status: 'Pending', name: 'Order Placed' },
-      { status: 'Confirmed', name: 'Order Confirmed' },
       { status: 'Packed', name: 'Order Packed' },
       { status: 'Shipped', name: 'Order Shipped' },
       { status: 'Out for Delivery', name: 'Out for Delivery' },
@@ -408,7 +403,7 @@ const MyOrders = () => {
                                 )}
                                 
                                 {/* Cancel Order Button */}
-                                {(order.status === "Pending" || order.status === "Confirmed") && (
+                                {order.status === "Pending" && (
                                   <AlertDialog open={orderToCancel === order.id} onOpenChange={(open) => !open && setOrderToCancel(null)}>
                                     <AlertDialogTrigger asChild>
                                       <Button 

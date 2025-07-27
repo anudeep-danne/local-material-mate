@@ -34,6 +34,7 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
           },
           (payload) => {
             console.log('🔄 Orders: Real-time order change detected');
+            console.log('🔄 Orders: Payload:', payload);
             
             // Only refresh if the change is relevant to this user
             const orderData = payload.new || payload.old;
@@ -44,6 +45,7 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
               
               if (isRelevant) {
                 console.log('🔄 Orders: Relevant order change, refreshing orders...');
+                console.log('🔄 Orders: Order data:', orderData);
                 // Add a small delay to ensure the database transaction is complete
                 setTimeout(() => {
                   fetchOrders();
@@ -127,6 +129,15 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       }
       
       console.log('🔄 Orders: Orders found:', data?.length || 0);
+      
+      // Log the status of each order for debugging
+      if (data && data.length > 0) {
+        console.log('🔄 Orders: Order statuses:', data.map((order: any) => ({
+          id: order.id,
+          status: order.status,
+          updated_at: order.updated_at
+        })));
+      }
       
       // Process the data and filter out orders with invalid vendor data
       const processedData = (data as unknown as Order[]).filter(order => {
@@ -221,8 +232,10 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
+  const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
     try {
+      console.log('🔄 Orders: Updating order status:', orderId, 'to:', status);
+      
       // Try to update with the requested status first
       let { error } = await supabase
         .from('orders')
@@ -236,12 +249,16 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       if (error) {
         console.warn('Failed to set status to', status, 'trying fallback:', error.message);
         
-        // Map to allowed DB values
+        // Map to allowed DB values - use the actual status instead of fallback
         let dbStatus: string = status;
-        if (status === 'Confirmed' || status === 'Packed') dbStatus = 'Packed';
-        else if (status === 'Shipped' || status === 'Out for Delivery' || status === 'Delivered') dbStatus = 'Delivered';
-        else if (status === 'Pending') dbStatus = 'Pending';
-        else if (status === 'Cancelled') dbStatus = 'Delivered'; // Map cancelled to delivered in DB
+        if (status === 'Pending') dbStatus = 'Pending';
+        else if (status === 'Packed') dbStatus = 'Packed';
+        else if (status === 'Shipped') dbStatus = 'Shipped';
+        else if (status === 'Out for Delivery') dbStatus = 'Out for Delivery';
+        else if (status === 'Delivered') dbStatus = 'Delivered';
+        else if (status === 'Cancelled') dbStatus = 'Cancelled';
+        
+        console.log('🔄 Orders: Using fallback status:', dbStatus);
         
         const { error: fallbackError } = await supabase
           .from('orders')
@@ -255,6 +272,8 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
           console.error('Failed to update order status:', fallbackError);
           throw fallbackError;
         }
+      } else {
+        console.log('✅ Orders: Status updated successfully to:', status);
       }
       
       // Update local state to show the intended status
