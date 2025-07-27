@@ -66,6 +66,17 @@ const IncomingOrders = () => {
   // Accept order function
   const handleAcceptOrder = async (orderId: string) => {
     try {
+      // Check if user is authenticated before attempting update
+      if (!user?.id) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to accept orders",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('🔄 IncomingOrders: Accepting order:', orderId, 'User ID:', user.id);
       await updateOrderStatus(orderId, "Confirmed");
       toast({
         title: "Success",
@@ -73,9 +84,10 @@ const IncomingOrders = () => {
       });
     } catch (error) {
       console.error('❌ Failed to accept order:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to accept order';
       toast({
         title: "Error",
-        description: "Failed to accept order",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -84,6 +96,17 @@ const IncomingOrders = () => {
   // Decline order function
   const handleDeclineOrder = async (orderId: string) => {
     try {
+      // Check if user is authenticated before attempting update
+      if (!user?.id) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to decline orders",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('🔄 IncomingOrders: Declining order:', orderId, 'User ID:', user.id);
       await updateOrderStatus(orderId, "Cancelled");
       setOrderToDecline(null);
       toast({
@@ -92,9 +115,10 @@ const IncomingOrders = () => {
       });
     } catch (error) {
       console.error('❌ Failed to decline order:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to decline order';
       toast({
         title: "Error",
-        description: "Failed to decline order",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -103,6 +127,17 @@ const IncomingOrders = () => {
   // Status update function
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
+      // Check if user is authenticated before attempting update
+      if (!user?.id) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to update order status",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('🔄 IncomingOrders: Updating order status:', orderId, 'to:', newStatus, 'User ID:', user.id);
       await updateOrderStatus(orderId, newStatus as any);
       toast({
         title: "Success",
@@ -110,9 +145,10 @@ const IncomingOrders = () => {
       });
     } catch (error) {
       console.error('❌ Failed to update status:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update status';
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description: errorMessage,
         variant: "destructive",
       });
     }
