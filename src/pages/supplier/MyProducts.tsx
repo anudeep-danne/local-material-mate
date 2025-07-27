@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Edit, Trash2, Plus, Search, Package, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 import { useAuth } from "@/hooks/useAuth";
 import { useProductReviews } from "@/hooks/useProductReviews";
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@/components/ui/command";
 
 const MyProducts = () => {
   const navigate = useNavigate();
@@ -144,11 +145,12 @@ const MyProducts = () => {
                 />
               </div>
               
+              {/* Category Filter Combobox */}
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full md:w-48">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-64 max-h-64 p-0">
                   <div className="p-2 sticky top-0 bg-white z-10">
                     <input
                       type="text"
@@ -161,7 +163,7 @@ const MyProducts = () => {
                   </div>
                   {(categorySearchTerm
                     ? allCategories.filter(cat => cat.label.toLowerCase().includes(categorySearchTerm.toLowerCase()))
-                    : allCategories.filter((cat, idx) => idx < 4 || cat.value === "all")
+                    : allCategories
                   ).map(cat => (
                     <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                   ))}

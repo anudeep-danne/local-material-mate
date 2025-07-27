@@ -11,6 +11,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useCartContext } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useProductReviews } from "@/hooks/useProductReviews";
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@/components/ui/command";
 
 const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -249,11 +250,12 @@ const BrowseProducts = () => {
                 </div>
               </div>
               
+              {/* Category Filter Combobox */}
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-full md:w-48">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-64 max-h-64 p-0">
                   <div className="p-2 sticky top-0 bg-white z-10">
                     <input
                       type="text"
@@ -266,7 +268,7 @@ const BrowseProducts = () => {
                   </div>
                   {(categorySearchTerm
                     ? allCategories.filter(cat => cat.label.toLowerCase().includes(categorySearchTerm.toLowerCase()))
-                    : allCategories.filter((cat, idx) => idx < 4 || cat.value === "all")
+                    : allCategories
                   ).map(cat => (
                     <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                   ))}
