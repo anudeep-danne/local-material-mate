@@ -4,7 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-const AuthForm = () => {
+interface AuthFormProps {
+  role?: 'vendor' | 'supplier';
+}
+
+const AuthForm = ({ role: initialRole }: AuthFormProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,7 +16,7 @@ const AuthForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [role, setRole] = useState<'vendor' | 'supplier'>('vendor');
+  const [role, setRole] = useState<'vendor' | 'supplier'>(initialRole || 'vendor');
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
@@ -94,6 +98,13 @@ const AuthForm = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+      <button
+        className="absolute top-4 left-4 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => navigate(-1)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        Back
+      </button>
       <div className="max-w-md w-full bg-card rounded-lg shadow-lg p-8 flex flex-col items-center">
         {/* Role Switcher */}
         <div className="flex justify-center gap-4 mb-4">
