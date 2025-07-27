@@ -3,7 +3,8 @@ import { VendorSidebar } from "@/components/VendorSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Star, Package, Clock, MapPin, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Star, Package, Clock, MapPin, AlertCircle, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useProductComparison } from "@/hooks/useProductComparison";
@@ -17,34 +18,54 @@ const CompareSuppliers = () => {
   const [recentSuppliers, setRecentSuppliers] = useState<any[]>([]);
   const [showRecentOnly, setShowRecentOnly] = useState(false);
 
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [supplier1, setSupplier1] = useState<string>("");
   const [supplier2, setSupplier2] = useState<string>("");
-  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [productSearch, setProductSearch] = useState<string>("");
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
 
   const selectedSupplier1 = suppliers.find(s => s.id === supplier1);
   const selectedSupplier2 = suppliers.find(s => s.id === supplier2);
 
-  // Get product comparison data
-  const supplierIds = [supplier1, supplier2].filter(Boolean);
-  const { products: productsBySupplier, loading: productsLoading, getAllProductNames, getProductByName } = useProductComparison(supplierIds);
+  // Get all products from all suppliers for product selection
+  const allSupplierIds = suppliers.map(s => s.id);
+  const { products: productsBySupplier, loading: productsLoading, getAllProductNames, getProductByName } = useProductComparison(allSupplierIds);
 
   const availableProducts = getAllProductNames();
   const selectedProduct1 = selectedProduct ? getProductByName(supplier1, selectedProduct) : null;
   const selectedProduct2 = selectedProduct ? getProductByName(supplier2, selectedProduct) : null;
 
-  // Get common products between suppliers
-  const getCommonProducts = () => {
-    if (!supplier1 || !supplier2) return [];
-    const supplier1Products = productsBySupplier[supplier1] || [];
-    const supplier2Products = productsBySupplier[supplier2] || [];
-    
-    const supplier1Names = new Set(supplier1Products.map(p => p.name));
-    const supplier2Names = new Set(supplier2Products.map(p => p.name));
-    
-    return Array.from(supplier1Names).filter(name => supplier2Names.has(name));
+  // Get suppliers that have the selected product
+  const getSuppliersWithProduct = (productName: string) => {
+    return suppliers.filter(supplier => {
+      const supplierProducts = productsBySupplier[supplier.id] || [];
+      return supplierProducts.some(product => product.name === productName);
+    });
   };
 
-  const commonProducts = getCommonProducts();
+  const suppliersWithSelectedProduct = selectedProduct ? getSuppliersWithProduct(selectedProduct) : [];
+
+  // Filter products based on search
+  const getFilteredProducts = () => {
+    if (!productSearch.trim()) {
+      // Show top products (most popular by supplier count) when no search
+      return availableProducts
+        .map(productName => ({
+          name: productName,
+          supplierCount: getSuppliersWithProduct(productName).length
+        }))
+        .sort((a, b) => b.supplierCount - a.supplierCount)
+        .slice(0, 10) // Show top 10 products
+        .map(item => item.name);
+    }
+    
+    // Filter by search term
+    return availableProducts.filter(productName =>
+      productName.toLowerCase().includes(productSearch.toLowerCase())
+    );
+  };
+
+  const filteredProducts = getFilteredProducts();
 
   useEffect(() => {
     const fetchRecentSuppliers = async () => {
@@ -70,7 +91,7 @@ const CompareSuppliers = () => {
   };
 
   const renderProductComparison = () => {
-    if (!selectedProduct) return null;
+    if (!selectedProduct || !selectedSupplier1 || !selectedSupplier2) return null;
 
     return (
       <div className="mb-8">
@@ -79,7 +100,7 @@ const CompareSuppliers = () => {
           {/* Supplier 1 Product */}
           <Card className="border-vendor-primary/30">
             <CardHeader className="bg-vendor-secondary/30">
-              <CardTitle className="text-vendor-primary text-base">{selectedSupplier1?.name}</CardTitle>
+              <CardTitle className="text-vendor-primary text-base">{selectedSupplier1.name}</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               {selectedProduct1 ? (
@@ -109,7 +130,7 @@ const CompareSuppliers = () => {
           {/* Supplier 2 Product */}
           <Card className="border-supplier-primary/30">
             <CardHeader className="bg-supplier-secondary/30">
-              <CardTitle className="text-supplier-primary text-base">{selectedSupplier2?.name}</CardTitle>
+              <CardTitle className="text-supplier-primary text-base">{selectedSupplier2.name}</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               {selectedProduct2 ? (
@@ -235,79 +256,6 @@ const CompareSuppliers = () => {
     );
   };
 
-  const renderComparisonSummary = () => {
-    if (!selectedSupplier1 || !selectedSupplier2) return null;
-
-    const supplier1Products = productsBySupplier[supplier1] || [];
-    const supplier2Products = productsBySupplier[supplier2] || [];
-    
-    const avgPrice1 = supplier1Products.length > 0 
-      ? supplier1Products.reduce((sum, p) => sum + p.price, 0) / supplier1Products.length 
-      : 0;
-    const avgPrice2 = supplier2Products.length > 0 
-      ? supplier2Products.reduce((sum, p) => sum + p.price, 0) / supplier2Products.length 
-      : 0;
-
-    return (
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Comparison Summary</h3>
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total Products</span>
-                  <span className="font-semibold">{supplier1Products.length} vs {supplier2Products.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Common Products</span>
-                  <span className="font-semibold">{commonProducts.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Average Price</span>
-                  <span className="font-semibold">₹{avgPrice1.toFixed(0)} vs ₹{avgPrice2.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Price Difference</span>
-                  <span className={`font-semibold ${avgPrice1 > avgPrice2 ? 'text-red-600' : 'text-green-600'}`}>
-                    ₹{Math.abs(avgPrice1 - avgPrice2).toFixed(0)}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Rating</span>
-                  <span className="font-semibold">{selectedSupplier1.averageRating.toFixed(1)} vs {selectedSupplier2.averageRating.toFixed(1)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Reviews</span>
-                  <span className="font-semibold">{selectedSupplier1.totalReviews} vs {selectedSupplier2.totalReviews}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Better Overall Rating</span>
-                  <span className="font-semibold text-green-600">
-                    {selectedSupplier1.averageRating > selectedSupplier2.averageRating ? selectedSupplier1.name : selectedSupplier2.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Better Average Price</span>
-                  <span className="font-semibold text-green-600">
-                    {avgPrice1 < avgPrice2 ? selectedSupplier1.name : selectedSupplier2.name}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
       <SidebarProvider>
@@ -378,86 +326,137 @@ const CompareSuppliers = () => {
               </label>
             </div>
 
-            {/* Supplier Selection */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select First Supplier</label>
-                <Select value={supplier1} onValueChange={setSupplier1}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a supplier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSuppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Second Supplier</label>
-                <Select value={supplier2} onValueChange={setSupplier2}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a supplier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSuppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Product Selection - First Step */}
+            <div className="mb-8">
+              <label className="text-sm font-medium mb-2 block">Select Product to Compare</label>
+              <Select 
+                value={selectedProduct} 
+                onValueChange={setSelectedProduct}
+                open={isProductDropdownOpen}
+                onOpenChange={setIsProductDropdownOpen}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a product to compare prices across suppliers" />
+                </SelectTrigger>
+                <SelectContent className="w-[400px]">
+                  {/* Search Input */}
+                  <div className="p-2">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search products..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="pl-8"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setIsProductDropdownOpen(false);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Product List */}
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((productName) => {
+                        const suppliersWithProduct = getSuppliersWithProduct(productName);
+                        return (
+                          <SelectItem key={productName} value={productName}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{productName}</span>
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                {suppliersWithProduct.length} supplier{suppliersWithProduct.length !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-center text-muted-foreground">
+                        {productSearch.trim() ? 'No products found matching your search.' : 'No products available.'}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Show all products option when searching */}
+                  {productSearch.trim() && (
+                    <div className="border-t p-2">
+                      <button
+                        onClick={() => {
+                          setProductSearch('');
+                          setIsProductDropdownOpen(false);
+                        }}
+                        className="w-full text-left text-sm text-muted-foreground hover:text-foreground p-2 rounded hover:bg-muted"
+                      >
+                        Clear search and show all products
+                      </button>
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              {productsLoading && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  Loading product data...
+                </div>
+              )}
+              {selectedProduct && suppliersWithSelectedProduct.length > 0 && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  💡 {suppliersWithSelectedProduct.length} supplier{suppliersWithSelectedProduct.length !== 1 ? 's' : ''} have this product
+                </div>
+              )}
+              {!productSearch.trim() && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  💡 Showing top {filteredProducts.length} most popular products. Use search to find specific products.
+                </div>
+              )}
             </div>
 
-            {/* Product Selection */}
-            {selectedSupplier1 && selectedSupplier2 && (
-              <div className="mb-8">
-                <label className="text-sm font-medium mb-2 block">Select Product to Compare</label>
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a product to compare prices" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableProducts.map((productName) => {
-                      const isCommon = commonProducts.includes(productName);
-                      const supplier1Has = getProductByName(supplier1, productName);
-                      const supplier2Has = getProductByName(supplier2, productName);
-                      
-                      return (
-                        <SelectItem key={productName} value={productName}>
+            {/* Supplier Selection - Second Step */}
+            {selectedProduct && (
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select First Supplier</label>
+                  <Select value={supplier1} onValueChange={setSupplier1}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose first supplier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliersWithSelectedProduct.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
                           <div className="flex items-center justify-between w-full">
-                            <span>{productName}</span>
-                            <div className="flex gap-1 ml-2">
-                              {isCommon && (
-                                <Badge variant="secondary" className="text-xs">Common</Badge>
-                              )}
-                              {supplier1Has && (
-                                <Badge variant="outline" className="text-xs text-vendor-primary">₹{supplier1Has.price}</Badge>
-                              )}
-                              {supplier2Has && (
-                                <Badge variant="outline" className="text-xs text-supplier-primary">₹{supplier2Has.price}</Badge>
-                              )}
-                            </div>
+                            <span>{supplier.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              ₹{getProductByName(supplier.id, selectedProduct)?.price || 0}
+                            </Badge>
                           </div>
                         </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {productsLoading && (
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    Loading product data...
-                  </div>
-                )}
-                {commonProducts.length > 0 && (
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    💡 {commonProducts.length} common product{commonProducts.length > 1 ? 's' : ''} available for comparison
-                  </div>
-                )}
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Second Supplier</label>
+                  <Select value={supplier2} onValueChange={setSupplier2}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose second supplier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliersWithSelectedProduct.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{supplier.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              ₹{getProductByName(supplier.id, selectedProduct)?.price || 0}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
 
@@ -466,9 +465,6 @@ const CompareSuppliers = () => {
 
             {/* Available Products */}
             {renderSupplierProducts()}
-
-            {/* Comparison Summary */}
-            {renderComparisonSummary()}
 
             {/* Supplier Comparison */}
             {selectedSupplier1 && selectedSupplier2 ? (
@@ -570,7 +566,10 @@ const CompareSuppliers = () => {
             ) : (
               <div className="text-center py-12">
                 <div className="text-muted-foreground mb-4">
-                  Select two suppliers to compare their offerings, ratings, and delivery options.
+                  {selectedProduct 
+                    ? "Select two suppliers to compare their offerings, ratings, and delivery options."
+                    : "Select a product first to compare prices across suppliers."
+                  }
                 </div>
                 {availableSuppliers.length === 0 && (
                   <div className="text-sm text-muted-foreground">
