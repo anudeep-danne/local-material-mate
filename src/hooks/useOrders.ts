@@ -15,27 +15,6 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Listen for account updates to refresh orders
-  useEffect(() => {
-    const handleAccountUpdate = (event: CustomEvent) => {
-      console.log('🔄 Orders: Account update received, refreshing orders');
-      fetchOrders();
-    };
-
-    const handleSupplierUpdate = (event: CustomEvent) => {
-      console.log('🔄 Orders: Supplier update received, refreshing orders');
-      fetchOrders();
-    };
-
-    window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
-    window.addEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
-
-    return () => {
-      window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
-      window.removeEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
-    };
-  }, [userId, userRole]);
-
   // Set up real-time subscription for orders
   useEffect(() => {
     if (userId && userId.trim() !== '') {
@@ -54,12 +33,25 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
             table: 'orders'
           },
           (payload) => {
-            console.log('🔄 Orders: Real-time order change detected, refreshing orders...');
+            console.log('🔄 Orders: Real-time order change detected');
             
-            // Add a small delay to ensure the database transaction is complete
-            setTimeout(() => {
-              fetchOrders();
-            }, 500);
+            // Only refresh if the change is relevant to this user
+            const orderData = payload.new || payload.old;
+            if (orderData) {
+              const isRelevant = userRole === 'vendor' 
+                ? (orderData as any).vendor_id === userId
+                : (orderData as any).supplier_id === userId;
+              
+              if (isRelevant) {
+                console.log('🔄 Orders: Relevant order change, refreshing orders...');
+                // Add a small delay to ensure the database transaction is complete
+                setTimeout(() => {
+                  fetchOrders();
+                }, 500);
+              } else {
+                console.log('🔄 Orders: Order change not relevant to this user, skipping refresh');
+              }
+            }
           }
         )
         .subscribe((status) => {
@@ -68,8 +60,6 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
             console.log('🔄 Orders: Successfully subscribed to order changes');
           } else if (status === 'CHANNEL_ERROR') {
             console.error('🔄 Orders: Real-time subscription error');
-            // If real-time fails, fall back to periodic refresh
-            console.log('🔄 Orders: Falling back to periodic refresh due to real-time error');
           }
         });
 
@@ -82,21 +72,6 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       setOrders([]);
       setLoading(false);
       setError(null);
-    }
-  }, [userId, userRole]);
-
-  // Set up periodic refresh as fallback (every 10 seconds)
-  useEffect(() => {
-    if (userId && userId.trim() !== '') {
-      const interval = setInterval(() => {
-        console.log('🔄 Orders: Periodic refresh triggered');
-        fetchOrders();
-      }, 10000); // 10 seconds for more frequent updates
-
-      return () => {
-        console.log('🔄 Orders: Cleaning up periodic refresh');
-        clearInterval(interval);
-      };
     }
   }, [userId, userRole]);
 
@@ -308,34 +283,38 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
 
   const cancelOrder = async (orderId: string) => {
     try {
-      // Try to update with 'Cancelled' status first
-      let { error } = await supabase
+      console.log('🔄 Orders: Cancelling order:', orderId, 'User role:', userRole);
+      
+      if (!userId || userId.trim() === '') {
+        throw new Error('No valid user ID found. Please log in again.');
+      }
+
+      // Prepare update data
+      const updateData = {
+        status: 'Cancelled',
+        cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('🔄 Orders: Update data for cancellation:', updateData);
+
+      const { error } = await supabase
         .from('orders')
-        .update({ 
-          status: 'Cancelled',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', orderId);
 
-      // If that fails, try with 'Delivered' status (which should be allowed)
       if (error) {
-        console.warn('Failed to set status to Cancelled, trying Delivered:', error.message);
-        
-        const { error: fallbackError } = await supabase
-          .from('orders')
-          .update({ 
-            status: 'Delivered',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', orderId);
-
-        if (fallbackError) {
-          console.error('Failed to update order status:', fallbackError);
-          throw fallbackError;
-        }
+        console.error('❌ Failed to cancel order:', error);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Error details:', error.details);
+        console.error('❌ Error hint:', error.hint);
+        throw error;
       }
+
+      console.log('✅ Order cancelled successfully');
       
-      // Update local state to show as 'Cancelled' regardless of what was saved in DB
+      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
@@ -351,12 +330,12 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       
       toast.success('Order cancelled successfully');
       
-      // Don't refetch immediately to preserve the UI state
-      // The order will appear as cancelled in the UI
     } catch (err) {
+      console.error('❌ Exception in cancelOrder:', err);
       const message = err instanceof Error ? err.message : 'Failed to cancel order';
       setError(message);
       toast.error(message);
+      throw err; // Re-throw to allow calling function to handle
     }
   };
 

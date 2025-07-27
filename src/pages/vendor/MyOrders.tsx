@@ -408,7 +408,7 @@ const MyOrders = () => {
                                 )}
                                 
                                 {/* Cancel Order Button */}
-                                {order.status === "Pending" && (
+                                {(order.status === "Pending" || order.status === "Confirmed") && (
                                   <AlertDialog open={orderToCancel === order.id} onOpenChange={(open) => !open && setOrderToCancel(null)}>
                                     <AlertDialogTrigger asChild>
                                       <Button 
