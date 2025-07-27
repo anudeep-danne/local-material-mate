@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Search, Plus, Minus, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCartContext } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,9 @@ const BrowseProducts = () => {
   const [priceRange, setPriceRange] = useState("all");
   const [quantityStates, setQuantityStates] = useState<Record<string, number>>({});
   const [productRatings, setProductRatings] = useState<Record<string, { averageRating: number; totalReviews: number }>>({});
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  // Add a separate state for location search
+  const [locationSearchTerm, setLocationSearchTerm] = useState("");
 
   // Get authenticated user ID
   const { user } = useAuth();
@@ -65,11 +68,22 @@ const BrowseProducts = () => {
     }
   }, [products, getProductRating]);
 
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.supplier.business_name && product.supplier.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
-    || (product.supplier.name && product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Compute unique locations from products, excluding 'Unknown'
+  const uniqueLocations = useMemo(() => {
+    const locations = products.map(p => p.supplier.city).filter(Boolean);
+    return ["all", ...Array.from(new Set(locations))];
+  }, [products]);
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.supplier.business_name && product.supplier.business_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.supplier.name && product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
+    const matchesLocation = selectedLocation === "all" || (product.supplier.city || "Unknown") === selectedLocation;
+    let matchesStatus = true;
+    
+    return matchesSearch && matchesCategory && matchesLocation && matchesStatus;
+  });
 
   // Get current quantity for a product
   const getCurrentQuantity = (productId: string) => {
@@ -246,6 +260,29 @@ const BrowseProducts = () => {
                   <SelectItem value="100+">₹100+</SelectItem>
                 </SelectContent>
               </Select>
+              {/* Location Filter */}
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="p-2 sticky top-0 bg-white z-10">
+                    <input
+                      type="text"
+                      placeholder="Search location..."
+                      className="w-full px-2 py-1 border rounded text-sm outline-none"
+                      value={locationSearchTerm}
+                      onChange={e => setLocationSearchTerm(e.target.value)}
+                      onKeyDown={e => e.stopPropagation()}
+                    />
+                  </div>
+                  {uniqueLocations
+                    .filter(loc => loc === "all" || loc.toLowerCase().includes(locationSearchTerm.toLowerCase()))
+                    .map(loc => (
+                      <SelectItem key={loc} value={loc}>{loc === "all" ? "All Locations" : loc}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Products Grid */}
@@ -277,6 +314,9 @@ const BrowseProducts = () => {
                         <h3 className="font-semibold text-lg line-clamp-2">{product.name}</h3>
                         <p className="text-sm text-muted-foreground">
                           {product.supplier.business_name || product.supplier.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.supplier.city || "Location not specified"}
                         </p>
                         
                         {/* Product Rating */}
