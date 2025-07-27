@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Trash2, Plus, Search, Package } from "lucide-react";
+import { Edit, Trash2, Plus, Search, Package, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 import { useAuth } from "@/hooks/useAuth";
+import { useProductReviews } from "@/hooks/useProductReviews";
 
 const MyProducts = () => {
   const navigate = useNavigate();
@@ -17,9 +18,38 @@ const MyProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [productRatings, setProductRatings] = useState<{[key: string]: {averageRating: number, totalReviews: number}}>({});
 
   const supplierId = user?.id;
   const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId || "");
+  const { getProductRating } = useProductReviews();
+
+  // Fetch product ratings
+  useEffect(() => {
+    const fetchProductRatings = async () => {
+      if (!supplierId || !products.length) return;
+
+      const ratings: {[key: string]: {averageRating: number, totalReviews: number}} = {};
+      
+      for (const product of products) {
+        try {
+          const rating = await getProductRating(product.id, supplierId);
+          if (rating) {
+            ratings[product.id] = {
+              averageRating: rating.averageRating,
+              totalReviews: rating.totalReviews
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching rating for product ${product.id}:`, error);
+        }
+      }
+      
+      setProductRatings(ratings);
+    };
+
+    fetchProductRatings();
+  }, [supplierId, products, getProductRating]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -45,7 +75,31 @@ const MyProducts = () => {
     return "Out of Stock";
   };
 
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    
+    return [...Array(5)].map((_, i) => {
+      let starClass = "text-gray-300";
+      if (i < fullStars) {
+        starClass = "text-yellow-400 fill-current";
+      } else if (i === fullStars && hasHalfStar) {
+        starClass = "text-yellow-400 fill-current";
+      }
+      
+      return (
+        <Star key={i} className={`h-3 w-3 ${starClass}`} />
+      );
+    });
+  };
 
+  const getRatingColor = (rating: number) => {
+    if (rating >= 4.5) return "text-green-600";
+    if (rating >= 4.0) return "text-blue-600";
+    if (rating >= 3.5) return "text-yellow-600";
+    if (rating >= 3.0) return "text-orange-600";
+    return "text-red-600";
+  };
 
   return (
     <>
@@ -135,62 +189,90 @@ const MyProducts = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredProducts.map((product) => (
-                  <Card key={product.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-6">
-                        <img
-                          src={product.image_url || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=150'}
-                          alt={product.name}
-                          className="w-20 h-20 object-cover rounded-lg"
-                        />
-                        
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="text-lg font-semibold mb-1">{product.name}</h3>
-                              <Badge variant="secondary" className="mb-2">
-                                {product.category}
-                              </Badge>
-                              <p className="text-2xl font-bold text-supplier-primary">
-                                ₹{product.price}
-                              </p>
-                            </div>
-                            
-                            <div className="text-right">
-                              <Badge className={getStatusColor(product.stock)}>
-                                {getStatusText(product.stock)}
-                              </Badge>
-                              <p className="text-sm text-muted-foreground mt-2">
-                                Stock: {product.stock} units
-                              </p>
+                {filteredProducts.map((product) => {
+                  const rating = productRatings[product.id];
+                  
+                  return (
+                    <Card key={product.id}>
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-6">
+                          <img
+                            src={product.image_url || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=150'}
+                            alt={product.name}
+                            className="w-20 h-20 object-cover rounded-lg"
+                          />
+                          
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h3 className="text-lg font-semibold mb-1">{product.name}</h3>
+                                <Badge variant="secondary" className="mb-2">
+                                  {product.category}
+                                </Badge>
+                                <p className="text-2xl font-bold text-supplier-primary">
+                                  ₹{product.price}
+                                </p>
+                                
+                                {/* Product Rating Display */}
+                                {rating && rating.totalReviews > 0 ? (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <div className="flex items-center gap-1">
+                                      {renderStars(rating.averageRating)}
+                                    </div>
+                                    <span className={`text-sm font-medium ${getRatingColor(rating.averageRating)}`}>
+                                      {rating.averageRating.toFixed(1)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ({rating.totalReviews} review{rating.totalReviews !== 1 ? 's' : ''})
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <div className="flex items-center gap-1">
+                                      {renderStars(0)}
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
+                                      No reviews yet
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="text-right">
+                                <Badge className={getStatusColor(product.stock)}>
+                                  {getStatusText(product.stock)}
+                                </Badge>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                  Stock: {product.stock} units
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex flex-col gap-2">
-                          <Button 
-                            variant="supplier-outline" 
-                            size="sm"
-                            onClick={() => navigate(`/supplier/edit-product/${product.id}`)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => deleteProduct(product.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
+                          <div className="flex flex-col gap-2">
+                            <Button 
+                              variant="supplier-outline" 
+                              size="sm"
+                              onClick={() => navigate(`/supplier/edit-product/${product.id}`)}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => deleteProduct(product.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
 

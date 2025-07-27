@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Star, ShoppingCart, Search, Plus, Minus } from "lucide-react";
+import { Star, ShoppingCart, Search, Plus, Minus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCartContext } from "@/contexts/CartContext";
@@ -323,11 +323,17 @@ const BrowseProducts = () => {
                             </Button>
                           </div>
                           <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleQuantityChange(product.id, 0)}
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Delete from cart"
+                            onClick={() => {
+                              const cartItem = cartItems.find(item => item.product_id === product.id);
+                              if (cartItem && cartItem.id) {
+                                removeFromCart(cartItem.id);
+                              }
+                            }}
                           >
-                            Remove
+                            <Trash2 className="h-5 w-5 text-destructive" />
                           </Button>
                         </div>
                       ) : (
