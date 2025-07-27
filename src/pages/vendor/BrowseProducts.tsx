@@ -34,7 +34,7 @@ const BrowseProducts = () => {
     priceMax: priceRange === "0-50" ? 50 : priceRange === "50-100" ? 100 : undefined,
   };
 
-  const { products, loading, error } = useProducts(filters);
+  const { products, loading, error } = useProducts(undefined, filters);
   const { cartItems, addToCart, updateQuantity, removeFromCart } = useCartContext();
   
   // Debug: Log cart items when they change

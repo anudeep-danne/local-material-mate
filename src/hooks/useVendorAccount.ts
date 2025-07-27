@@ -57,7 +57,10 @@ export function useVendorAccount() {
           variant: "destructive",
         });
       } else {
-        setAccountData(data);
+        setAccountData({
+          ...data,
+          address: '' // Add missing address field with default value
+        });
       }
     } catch (err) {
       console.error('Unexpected error fetching account data:', err);

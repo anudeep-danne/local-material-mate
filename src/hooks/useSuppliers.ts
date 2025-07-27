@@ -8,6 +8,7 @@ type Supplier = Database['public']['Tables']['users']['Row'] & {
   productsCount: number;
   averagePrice: number;
   specialties: string[];
+  address?: string; // Make address optional
 };
 
 export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusFilter?: number) => {
@@ -29,7 +30,7 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
           role,
           business_name,
           phone,
-          address,
+          
           city,
           state,
           pincode,
@@ -81,7 +82,7 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
             phone: supplier.phone || 'Phone Not Set',
             city: supplier.city || 'Location Not Set',
             state: supplier.state || '',
-            address: supplier.address || 'Address Not Set',
+            address: 'Address not provided',
             averageRating,
             totalReviews: ratings.length,
             productsCount: products?.length || 0,

@@ -275,8 +275,6 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
   const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
     try {
       console.log('🔄 Orders: Updating order status:', orderId, 'to:', status, 'User role:', userRole);
-      console.log('🔄 Orders: User ID:', userId);
-      console.log('🔄 Orders: Authentication check - User ID valid:', !!userId && userId.trim() !== '');
       
       // Check if we have a valid user ID
       if (!userId || userId.trim() === '') {
@@ -291,21 +289,16 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       
       // Set appropriate fields based on status and user role
       if (status === 'Cancelled') {
-        updateData.cancelled_by = userRole === 'vendor' ? 'vendor' : 'supplier';
-        updateData.accepted_by = null; // Clear accepted_by when cancelled
-      } else if ((status === 'Pending' || status === 'Confirmed') && userRole === 'supplier') {
-        updateData.accepted_by = 'supplier';
-        updateData.cancelled_by = null; // Clear cancelled_by when accepted
-      } else {
-        // For other status updates, clear both fields
-        updateData.cancelled_by = null;
+        updateData.cancelled_by = userRole;
         updateData.accepted_by = null;
+      } else if (status === 'Confirmed' && userRole === 'supplier') {
+        updateData.accepted_by = 'supplier';
+        updateData.cancelled_by = null;
       }
       
       console.log('🔄 Orders: Update data:', updateData);
-      console.log('🔄 Orders: Executing database update...');
       
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .update(updateData)
         .eq('id', orderId)
@@ -313,22 +306,12 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
 
       if (error) {
         console.error('❌ Failed to update order status:', error);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error code:', error.code);
-        console.error('❌ Error details:', error.details);
-        console.error('❌ Error hint:', error.hint);
         throw error;
       }
       
       console.log('✅ Order status updated successfully:', data);
-      console.log('✅ Updated order details:', {
-        id: data?.[0]?.id,
-        status: data?.[0]?.status,
-        accepted_by: data?.[0]?.accepted_by,
-        cancelled_by: data?.[0]?.cancelled_by
-      });
       
-      // Update local state
+      // Update local state immediately for responsive UI
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
@@ -343,22 +326,24 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
         )
       );
       
-      // Show appropriate success message
-      let successMessage = `Order status updated to ${status}`;
-      if (status === 'Cancelled') {
-        successMessage = `Order cancelled by ${userRole}`;
-      } else if ((status === 'Pending' || status === 'Confirmed') && userRole === 'supplier') {
-        successMessage = 'Order accepted by supplier';
-      }
+      // Show success message
+      const successMessage = status === 'Cancelled' 
+        ? `Order cancelled by ${userRole}`
+        : status === 'Confirmed' && userRole === 'supplier'
+        ? 'Order accepted successfully'
+        : `Order status updated to ${status}`;
       
       toast.success(successMessage);
+      
+      // Force refresh to ensure real-time sync
+      setTimeout(() => fetchOrders(), 500);
       
     } catch (err) {
       console.error('❌ Exception in updateOrderStatus:', err);
       const message = err instanceof Error ? err.message : 'Failed to update order status';
       setError(message);
       toast.error(message);
-      throw err; // Re-throw to allow calling function to handle
+      throw err;
     }
   };
 
