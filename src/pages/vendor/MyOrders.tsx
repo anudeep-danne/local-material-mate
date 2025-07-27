@@ -15,10 +15,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Package, Truck, CheckCircle, Clock, XCircle, Eye, MapPin, Phone, Mail, Building } from "lucide-react";
+import { Package, Truck, CheckCircle, Clock, XCircle, Eye, MapPin, Phone, Mail, Building, AlertCircle } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
-import { useCart } from "@/hooks/useCart";
-import { useState } from "react";
+import { useCartContext } from "@/contexts/CartContext";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const getStatusColor = (status: string) => {
@@ -65,14 +65,34 @@ const getStatusIcon = (status: string) => {
 
 const MyOrders = () => {
   // Get authenticated user ID
-  const { user } = useAuth();
-  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
-  const { orders, loading, cancelOrder } = useOrders(vendorId, 'vendor');
-  const { addToCart } = useCart(vendorId);
+  const { user, loading: authLoading } = useAuth();
+  const vendorId = user?.id;
+  
+  // Only call useOrders when we have a valid vendorId
+  const { orders, loading: ordersLoading, cancelOrder, refetch, error: ordersError } = useOrders(
+    vendorId || null, 
+    'vendor'
+  );
+  
+  // Combined loading state
+  const loading = authLoading || ordersLoading;
+  const { addToCart } = useCartContext();
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);
   const [selectedOrderTracking, setSelectedOrderTracking] = useState<any>(null);
+  
+  // Force refresh when component mounts or vendorId changes
+  useEffect(() => {
+    if (vendorId && vendorId.trim() !== '') {
+      console.log('🔄 MyOrders: Vendor authenticated:', vendorId);
+    }
+  }, [vendorId]);
+  
+  // Additional refresh when orders change
+  useEffect(() => {
+    console.log('🔄 MyOrders: Orders changed, current count:', orders.length);
+  }, [orders]);
   
   // Filter orders based on selected status
   const getFilteredOrders = () => {
@@ -99,6 +119,15 @@ const MyOrders = () => {
   };
   
   const filteredOrders = getFilteredOrders();
+  
+  // Debug logging
+  console.log('🔄 MyOrders: Current state:', {
+    vendorId,
+    totalOrders: orders.length,
+    filteredOrders: filteredOrders.length,
+    statusFilter,
+    loading
+  });
   
   // Helper functions for empty state messages
   const getActiveOrders = () => orders.filter(order => 
@@ -162,10 +191,28 @@ const MyOrders = () => {
           <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">My Orders</h1>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('🔄 MyOrders: Manual refresh triggered');
+                  refetch();
+                }}
+                disabled={loading}
+              >
+                Refresh
+              </Button>
+              <Badge variant="secondary">
+                {filteredOrders.length} orders
+              </Badge>
+            </div>
           </header>
 
           {/* Content */}
           <div className="p-6">
+
+            
             {/* Filter Dropdown - Always visible */}
             <div className="mb-6">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -181,8 +228,51 @@ const MyOrders = () => {
             </div>
 
             <div className="space-y-6">
-              {loading ? (
-                <div className="text-center py-12">Loading orders...</div>
+              {/* Error Display */}
+              {ordersError && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <h3 className="font-semibold text-destructive">Error Loading Orders</h3>
+                  </div>
+                  <p className="text-sm text-destructive/80 mt-1">{ordersError}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={refetch}
+                    className="mt-2"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
+
+              {!vendorId && !authLoading ? (
+                <div className="text-center py-12">
+                  <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold mb-2">Please log in</h2>
+                  <p className="text-muted-foreground mb-6">
+                    You need to be logged in to view your orders.
+                  </p>
+                  <Button variant="vendor" onClick={() => window.location.href = '/vendor/login'}>
+                    Go to Login
+                  </Button>
+                </div>
+              ) : loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">
+                    {authLoading ? 'Checking authentication...' : 'Loading orders...'}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {authLoading ? 'Verifying your login status...' : 'Fetching your order data...'}
+                  </p>
+                  {!authLoading && vendorId && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Loading orders for vendor: {vendorId.substring(0, 8)}...
+                    </p>
+                  )}
+                </div>
               ) : filteredOrders.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -245,8 +335,20 @@ const MyOrders = () => {
                               <div>
                                 <div className="space-y-2">
                                   <div className="flex justify-between text-sm">
+                                    <span className="font-medium">Product:</span>
                                     <span>{order.product?.name || order.product_id}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="font-medium">Quantity:</span>
                                     <span>{order.quantity} units</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="font-medium">Supplier:</span>
+                                    <span>{order.supplier?.business_name || order.supplier?.name || 'Unknown Supplier'}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="font-medium">Order Date:</span>
+                                    <span>{order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</span>
                                   </div>
                                 </div>
                                 <div className="mt-4 pt-4 border-t">

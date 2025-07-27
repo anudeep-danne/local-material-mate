@@ -2,20 +2,33 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { VendorSidebar } from "@/components/VendorSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Star, TrendingUp, Award, RefreshCw } from "lucide-react";
+import { ShoppingCart, Package, Star, TrendingUp, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useCartContext } from "@/contexts/CartContext";
+import { useOrders } from "@/hooks/useOrders";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
   // Get authenticated user ID
-  const { user } = useAuth();
-  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
-  const { stats, loading, error, refetch } = useDashboard(vendorId, 'vendor');
+  const { user, loading: authLoading } = useAuth();
+  const vendorId = user?.id;
+  
+  // Only call hooks when we have a valid vendorId
+  const { stats, loading: dashboardLoading, error, refetch } = useDashboard(
+    vendorId || null, 
+    'vendor'
+  );
   const { cartItemsCount } = useCartContext();
+  const { orders, loading: ordersLoading } = useOrders(
+    vendorId || null, 
+    'vendor'
+  );
+  
+  // Combined loading state
+  const loading = authLoading || dashboardLoading || ordersLoading;
 
   const renderStars = (rating: number) => {
     return [...Array(5)].map((_, i) => (
@@ -75,7 +88,37 @@ const VendorDashboard = () => {
             <div className="p-6">
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full"></div>
-                <span className="ml-3 text-muted-foreground">Loading dashboard...</span>
+                <span className="ml-3 text-muted-foreground">
+                  {authLoading ? 'Checking authentication...' : 'Loading dashboard...'}
+                </span>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (!vendorId && !authLoading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Vendor Dashboard</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-12">
+                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">Please log in</h2>
+                <p className="text-muted-foreground mb-6">
+                  You need to be logged in to view your dashboard.
+                </p>
+                <Button variant="vendor" onClick={() => window.location.href = '/vendor/login'}>
+                  Go to Login
+                </Button>
               </div>
             </div>
           </main>
@@ -117,16 +160,12 @@ const VendorDashboard = () => {
           <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Vendor Dashboard</h1>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={refetch} 
-              className="ml-auto"
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Live updates</span>
+              </div>
+            </div>
           </header>
 
           {/* Content */}
@@ -145,7 +184,11 @@ const VendorDashboard = () => {
                   <Package className="h-4 w-4 text-vendor-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-vendor-primary">{stats.activeOrders}</div>
+                  <div className="text-2xl font-bold text-vendor-primary">
+                    {orders.filter(order => 
+                      order.status !== 'Cancelled' && order.status !== 'Delivered'
+                    ).length}
+                  </div>
                   <p className="text-xs text-muted-foreground">Orders in progress</p>
                 </CardContent>
               </Card>

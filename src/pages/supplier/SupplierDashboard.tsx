@@ -2,7 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, Inbox, Star, TrendingUp, Plus, RefreshCw } from "lucide-react";
+import { Package, Inbox, Star, TrendingUp, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/hooks/useAuth";
@@ -88,16 +88,6 @@ const SupplierDashboard = () => {
       <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Supplier Dashboard</h1>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={refetch} 
-              className="ml-auto"
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
           </header>
 
           {/* Content */}

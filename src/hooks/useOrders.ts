@@ -10,9 +10,9 @@ type Order = Database['public']['Tables']['orders']['Row'] & {
   cancelled_by?: 'vendor' | 'supplier';
 };
 
-export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
+export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier') => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Listen for account updates to refresh orders
@@ -36,10 +36,84 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
     };
   }, [userId, userRole]);
 
+  // Set up real-time subscription for orders
+  useEffect(() => {
+    if (userId && userId.trim() !== '') {
+      console.log('🔄 Orders: Setting up real-time subscription for orders, user:', userId, 'role:', userRole);
+      setLoading(true);
+      fetchOrders();
+
+      // Set up real-time subscription for order changes
+      const channel = supabase
+        .channel(`orders-changes-${userId}-${userRole}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders'
+          },
+          (payload) => {
+            console.log('🔄 Orders: Real-time order change detected, refreshing orders...');
+            
+            // Add a small delay to ensure the database transaction is complete
+            setTimeout(() => {
+              fetchOrders();
+            }, 500);
+          }
+        )
+        .subscribe((status) => {
+          console.log('🔄 Orders: Real-time subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('🔄 Orders: Successfully subscribed to order changes');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('🔄 Orders: Real-time subscription error');
+            // If real-time fails, fall back to periodic refresh
+            console.log('🔄 Orders: Falling back to periodic refresh due to real-time error');
+          }
+        });
+
+      return () => {
+        console.log('🔄 Orders: Cleaning up real-time subscription for user:', userId);
+        supabase.removeChannel(channel);
+      };
+    } else {
+      console.log('🔄 Orders: No valid user ID, clearing orders');
+      setOrders([]);
+      setLoading(false);
+      setError(null);
+    }
+  }, [userId, userRole]);
+
+  // Set up periodic refresh as fallback (every 10 seconds)
+  useEffect(() => {
+    if (userId && userId.trim() !== '') {
+      const interval = setInterval(() => {
+        console.log('🔄 Orders: Periodic refresh triggered');
+        fetchOrders();
+      }, 10000); // 10 seconds for more frequent updates
+
+      return () => {
+        console.log('🔄 Orders: Cleaning up periodic refresh');
+        clearInterval(interval);
+      };
+    }
+  }, [userId, userRole]);
+
   const fetchOrders = async () => {
+    if (!userId || userId.trim() === '') {
+      console.log('🔄 Orders: No valid user ID, skipping fetch');
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(null);
       const column = userRole === 'vendor' ? 'vendor_id' : 'supplier_id';
+      
+      console.log('🔄 Orders: Fetching orders for user:', userId, 'role:', userRole);
       
       const { data, error } = await supabase
         .from('orders')
@@ -50,52 +124,56 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
             name,
             email,
             role,
-            business_name,
-            phone,
-            address,
-            city,
-            state,
-            pincode,
-            description
+            business_name
           ),
           supplier:users!orders_supplier_id_fkey(
             id,
             name,
             email,
             role,
-            business_name,
-            phone,
-            address,
-            city,
-            state,
-            pincode,
-            description
+            business_name
           ),
-          product:products!orders_product_id_fkey(*)
+          product:products!orders_product_id_fkey(
+            id,
+            name,
+            price,
+            category,
+            stock
+          )
         `)
         .eq(column, userId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('🔄 Orders: Error fetching orders:', error);
+        setError(error.message);
+        setOrders([]);
+        return;
+      }
+      
+      console.log('🔄 Orders: Orders found:', data?.length || 0);
       
       // Process the data and filter out orders with invalid vendor data
-      const processedData = (data as Order[]).filter(order => {
-        // Filter out orders with dummy vendor data
-        const isVendorValid = order.vendor && 
-          order.vendor.name && 
-          order.vendor.name !== '' && 
-          !order.vendor.name.toLowerCase().includes('vendor') &&
-          !order.vendor.name.toLowerCase().includes('test') &&
-          !order.vendor.name.toLowerCase().includes('john') &&
-          !order.vendor.name.toLowerCase().includes('dummy');
+      const processedData = (data as unknown as Order[]).filter(order => {
+        // For vendors, check if the order belongs to them
+        if (userRole === 'vendor') {
+          return order.vendor && order.vendor.id === userId;
+        }
         
-        console.log('🔍 useOrders: Processing order:', order.id, 'Vendor:', order.vendor, 'Valid:', isVendorValid);
-        return isVendorValid;
+        // For suppliers, check if the order belongs to them
+        if (userRole === 'supplier') {
+          return order.supplier && order.supplier.id === userId;
+        }
+        
+        return true;
       });
       
+      console.log('🔄 Orders: Processed orders count:', processedData.length);
       setOrders(processedData);
     } catch (err) {
+      console.error('🔄 Orders: Error in fetchOrders:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -103,8 +181,19 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
 
   const placeOrder = async (cartItems: any[]) => {
     try {
+      console.log('🔄 Orders: Placing orders for cart items:', cartItems);
+      
       const orderPromises = cartItems.map(async (item) => {
         const totalAmount = item.product.price * item.quantity;
+        
+        console.log('🔄 Orders: Creating order for item:', {
+          vendor_id: item.vendor_id,
+          supplier_id: item.product.supplier_id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          total_amount: totalAmount,
+          status: 'Pending'
+        });
         
         return supabase
           .from('orders')
@@ -114,7 +203,9 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
             product_id: item.product_id,
             quantity: item.quantity,
             total_amount: totalAmount,
-            status: 'Pending'
+            status: 'Pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           });
       });
 
@@ -122,13 +213,32 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
       
       const errors = results.filter(result => result.error);
       if (errors.length > 0) {
+        console.error('🔄 Orders: Order placement errors:', errors);
         throw new Error('Some orders failed to place');
       }
 
-      toast.success('Orders placed successfully!');
-      await fetchOrders();
-      return true;
+          console.log('🔄 Orders: All orders placed successfully');
+    toast.success('Orders placed successfully!');
+    
+    // The real-time subscription will automatically refresh the orders
+    // But we can also manually refresh to ensure immediate update
+    console.log('🔄 Orders: Triggering immediate order refresh...');
+    
+    // Immediate refresh after order placement
+    setTimeout(() => {
+      console.log('🔄 Orders: Executing immediate fetchOrders after order placement...');
+      fetchOrders();
+    }, 100);
+    
+    // Additional refresh after a short delay to ensure order is in database
+    setTimeout(() => {
+      console.log('🔄 Orders: Executing delayed fetchOrders after order placement...');
+      fetchOrders();
+    }, 1000);
+    
+    return true;
     } catch (err) {
+      console.error('🔄 Orders: Error placing orders:', err);
       const message = err instanceof Error ? err.message : 'Failed to place orders';
       setError(message);
       toast.error(message);
@@ -283,9 +393,13 @@ export const useOrders = (userId: string, userRole: 'vendor' | 'supplier') => {
   };
 
   useEffect(() => {
+    console.log('🔄 Orders: useEffect triggered with userId:', userId, 'userRole:', userRole);
     if (userId && userId.trim() !== '' && userRole) {
+      console.log('🔄 Orders: Valid user ID and role, fetching orders...');
       fetchOrders();
     } else {
+      console.log('🔄 Orders: No valid user ID or role, clearing orders...');
+      console.log('🔄 Orders: userId:', userId, 'userRole:', userRole);
       // Clear orders if no valid userId
       setOrders([]);
       setLoading(false);

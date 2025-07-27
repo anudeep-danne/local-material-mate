@@ -43,7 +43,7 @@ type DashboardStats = {
   }>;
 };
 
-export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') => {
+export const useDashboard = (userId: string | null, userRole: 'vendor' | 'supplier') => {
   const [stats, setStats] = useState<DashboardStats>({
     activeOrders: 0,
     cartItems: 0,
@@ -58,7 +58,7 @@ export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') =>
     topProducts: [],
     topSuppliers: []
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchVendorStats = async () => {
@@ -308,6 +308,11 @@ export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') =>
       setLoading(true);
       setError(null);
 
+      if (!userId || userId.trim() === '') {
+        setLoading(false);
+        return;
+      }
+
       if (userRole === 'vendor') {
         await fetchVendorStats();
       } else {
@@ -323,6 +328,45 @@ export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') =>
   useEffect(() => {
     if (userId && userId.trim() !== '' && userRole) {
       fetchStats();
+      
+      // Set up real-time subscription for order changes
+      const channel = supabase
+        .channel(`dashboard-orders-${userId}-${userRole}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders'
+          },
+          (payload) => {
+            console.log('🔄 Dashboard: Order change detected, refreshing stats...');
+            // Refresh dashboard stats when orders change
+            setTimeout(() => {
+              fetchStats();
+            }, 500);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'cart'
+          },
+          (payload) => {
+            console.log('🔄 Dashboard: Cart change detected, refreshing stats...');
+            // Refresh dashboard stats when cart changes
+            setTimeout(() => {
+              fetchStats();
+            }, 500);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } else {
       // Clear stats if no valid userId
       setStats({
