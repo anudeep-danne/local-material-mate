@@ -431,35 +431,51 @@ const CompareSuppliers = () => {
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose a product to compare prices" />
                     </SelectTrigger>
-                    <SelectContent className="w-[400px] max-h-[300px] overflow-y-auto">
-                      <div className="p-2">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Search products..."
-                            value={productSearch}
-                            onChange={(e) => setProductSearch(e.target.value)}
-                            className="pl-8"
-                          />
-                        </div>
+                    <SelectContent className="w-[400px] max-h-[340px] p-0">
+                      {/* Enhanced Search Bar - always visible, not inside scrollable area */}
+                      <div className="sticky top-0 z-10 bg-white p-2 border-b flex items-center gap-2">
+                        <Search className="h-4 w-4 text-muted-foreground ml-2" />
+                        <input
+                          type="text"
+                          placeholder="Search products..."
+                          value={productSearch}
+                          onChange={e => setProductSearch(e.target.value)}
+                          autoFocus={isProductDropdownOpen}
+                          className="flex-1 px-2 py-1 bg-transparent outline-none text-sm"
+                          onKeyDown={e => e.stopPropagation()}
+                        />
+                        {productSearch && (
+                          <button
+                            type="button"
+                            className="ml-1 text-muted-foreground hover:text-destructive"
+                            onClick={() => setProductSearch("")}
+                            tabIndex={0}
+                            aria-label="Clear search"
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
-                      <div className="max-h-[200px] overflow-y-auto">
-                        {filteredProducts.map((productName) => {
-                          const supplierCount = getSuppliersWithProduct(productName).length;
-                          return (
-                            <SelectItem key={productName} value={productName}>
-                              <div className="flex items-center justify-between w-full">
+                      {/* Product List - scrollable */}
+                      <div className="max-h-[220px] overflow-y-auto">
+                        {filteredProducts.length > 0 ? (
+                          filteredProducts.map((productName) => {
+                            const supplierCount = getSuppliersWithProduct(productName).length;
+                            return (
+                              <SelectItem key={productName} value={productName} className="flex items-center justify-between w-full">
                                 <span>{productName}</span>
                                 <Badge variant="secondary" className="ml-2">
                                   {supplierCount} supplier{supplierCount !== 1 ? 's' : ''}
                                 </Badge>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
+                              </SelectItem>
+                            );
+                          })
+                        ) : (
+                          <div className="p-4 text-center text-muted-foreground text-sm">No products found</div>
+                        )}
                       </div>
                       {productSearch.trim() && (
-                        <div className="p-2 border-t">
+                        <div className="p-2 border-t bg-muted/10">
                           <Button
                             variant="ghost"
                             size="sm"
