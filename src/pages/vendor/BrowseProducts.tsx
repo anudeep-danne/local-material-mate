@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Star, ShoppingCart, Search, Plus, Minus, Trash2 } from "lucide-react";
+import { Star, ShoppingCart, Search, Plus, Minus, Trash2, AlertTriangle, XCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCartContext } from "@/contexts/CartContext";
@@ -163,6 +163,18 @@ const BrowseProducts = () => {
     if (rating >= 4) return "text-green-600";
     if (rating >= 3) return "text-yellow-600";
     return "text-red-600";
+  };
+
+  // Helper functions for stock status
+  const getStockStatusColor = (stock: number) => {
+    if (stock > 10) return "bg-green-500 text-white";
+    if (stock > 0) return "bg-yellow-500 text-white";
+    return "bg-red-500 text-white";
+  };
+  const getStockStatusText = (stock: number) => {
+    if (stock > 10) return "In Stock";
+    if (stock > 0) return "Low Stock";
+    return "Out of Stock";
   };
 
   if (loading) {
@@ -364,9 +376,17 @@ const BrowseProducts = () => {
                           </span>
                           <Badge variant="secondary">{product.category}</Badge>
                         </div>
-                        {/* Real-time Stock Display */}
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          <span className="font-semibold">Stock:</span> {product.stock} available
+                        {/* Real-time Stock Display with Status */}
+                        <div className="mt-2 flex items-center gap-2 text-xs">
+                          <Badge className={getStockStatusColor(product.stock)}>
+                            {product.stock === 0 ? (
+                              <XCircle className="inline h-4 w-4 mr-1 align-text-bottom" />
+                            ) : product.stock <= 10 ? (
+                              <AlertTriangle className="inline h-4 w-4 mr-1 align-text-bottom" />
+                            ) : null}
+                            {getStockStatusText(product.stock)}
+                          </Badge>
+                          <span className="text-muted-foreground">Stock: {product.stock} available</span>
                         </div>
                       </div>
                     </CardHeader>
