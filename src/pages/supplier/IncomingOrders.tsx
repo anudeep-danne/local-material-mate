@@ -2,7 +2,6 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -21,115 +20,107 @@ import { useNavigate } from "react-router-dom";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 import React from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const IncomingOrders = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading, role, error: authError } = useAuth();
   const supplierId = user?.id;
-  const { orders, loading, updateOrderStatus } = useOrders(supplierId || "", 'supplier');
+  const { orders, loading, updateOrderStatus } = useOrders(supplierId || null, 'supplier');
+  const { toast } = useToast();
   
-  // Debug: Log vendor data for each order
-  useEffect(() => {
-    if (orders.length > 0) {
-      console.log('🔍 IncomingOrders: Orders with vendor data:', orders.map(order => ({
-        orderId: order.id,
-        vendor: order.vendor,
-        vendorId: order.vendor_id
-      })));
-    }
-  }, [orders]);
-  const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({});
   const [orderToDecline, setOrderToDecline] = useState<string | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);
   
-  // Filter out cancelled orders from incoming orders
-  const activeOrders = orders.filter(order => order.status !== 'Cancelled');
+  // Filter orders (show all non-cancelled orders)
+  const displayOrders = orders.filter(order => order.status !== 'Cancelled');
   
-  // Sync orderStatuses with real orders
-  React.useEffect(() => {
-    if (orders) {
-      setOrderStatuses(orders.reduce((acc, order) => ({ ...acc, [order.id]: order.status }), {}));
-    }
-  }, [orders]);
-
-
-
+  // Status color function
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Delivered":
-        return "bg-success text-white";
-      case "Out for Delivery":
-        return "bg-blue-500 text-white";
-      case "Shipped":
-        return "bg-purple-500 text-white";
-      case "Packed":
-        return "bg-warning text-white";
-      case "Confirmed":
-        return "bg-green-500 text-white";
-      case "Cancelled":
-        return "bg-destructive text-white";
-      case "Pending":
-        return "bg-muted text-muted-foreground";
-      default:
-        return "bg-muted text-muted-foreground";
+      case "Delivered": return "bg-green-500 text-white";
+      case "Out for Delivery": return "bg-blue-500 text-white";
+      case "Shipped": return "bg-purple-500 text-white";
+      case "Packed": return "bg-yellow-500 text-white";
+      case "Confirmed": return "bg-green-500 text-white";
+      case "Cancelled": return "bg-red-500 text-white";
+      case "Pending": return "bg-gray-500 text-white";
+      default: return "bg-gray-500 text-white";
     }
   };
-
+  
+  // Status icon function
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Delivered":
-        return <CheckCircle className="h-4 w-4" />;
-      case "Out for Delivery":
-        return <Truck className="h-4 w-4" />;
-      case "Shipped":
-        return <Package className="h-4 w-4" />;
-      case "Packed":
-        return <Package className="h-4 w-4" />;
-      case "Confirmed":
-        return <CheckCircle className="h-4 w-4" />;
-      case "Cancelled":
-        return <XCircle className="h-4 w-4" />;
-      case "Pending":
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <Clock className="h-4 w-4" />;
+      case "Delivered": return <CheckCircle className="h-4 w-4" />;
+      case "Out for Delivery": return <Truck className="h-4 w-4" />;
+      case "Shipped": return <Package className="h-4 w-4" />;
+      case "Packed": return <Package className="h-4 w-4" />;
+      case "Confirmed": return <CheckCircle className="h-4 w-4" />;
+      case "Cancelled": return <XCircle className="h-4 w-4" />;
+      case "Pending": return <Clock className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
     }
   };
-
+  
+  // Accept order function
   const handleAcceptOrder = async (orderId: string) => {
-    await updateOrderStatus(orderId, "Confirmed");
-    // Update local state immediately
-    setOrderStatuses(prev => ({ ...prev, [orderId]: "Confirmed" }));
-  };
-
-  const handleDeclineOrder = async (orderId: string) => {
-    await updateOrderStatus(orderId, "Cancelled");
-    setOrderToDecline(null); // Close the dialog
-    // Update local state immediately
-    setOrderStatuses(prev => ({ ...prev, [orderId]: "Cancelled" }));
-  };
-
-  const getNextStatusOptions = (currentStatus: string) => {
-    switch (currentStatus) {
-      case "Pending":
-        return [];
-      case "Confirmed":
-        return ["Packed"];
-      case "Packed":
-        return ["Shipped"];
-      case "Shipped":
-        return ["Out for Delivery"];
-      case "Out for Delivery":
-        return ["Delivered"];
-      default:
-        return [];
+    try {
+      await updateOrderStatus(orderId, "Confirmed");
+      toast({
+        title: "Success",
+        description: "Order accepted successfully",
+      });
+    } catch (error) {
+      console.error('❌ Failed to accept order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept order",
+        variant: "destructive",
+      });
     }
   };
-
-  const getNextStatusButton = (orderId: string, currentStatus: string) => {
-    const order = orders.find(o => o.id === orderId);
-    
-    switch (currentStatus) {
+  
+  // Decline order function
+  const handleDeclineOrder = async (orderId: string) => {
+    try {
+      await updateOrderStatus(orderId, "Cancelled");
+      setOrderToDecline(null);
+      toast({
+        title: "Success",
+        description: "Order declined successfully",
+      });
+    } catch (error) {
+      console.error('❌ Failed to decline order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline order",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Status update function
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      await updateOrderStatus(orderId, newStatus as any);
+      toast({
+        title: "Success",
+        description: `Status updated to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error('❌ Failed to update status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Status button function
+  const getStatusButtons = (order: any) => {
+    switch (order.status) {
       case "Pending":
         return (
           <div className="space-y-2">
@@ -143,20 +134,20 @@ const IncomingOrders = () => {
               View Details
             </Button>
             <Button 
-              variant="supplier" 
+              variant="default" 
               size="sm" 
-              className="w-full"
-              onClick={() => handleAcceptOrder(orderId)}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => handleAcceptOrder(order.id)}
             >
               Accept Order
             </Button>
-            <AlertDialog open={orderToDecline === orderId} onOpenChange={(open) => !open && setOrderToDecline(null)}>
+            <AlertDialog open={orderToDecline === order.id} onOpenChange={(open) => !open && setOrderToDecline(null)}>
               <AlertDialogTrigger asChild>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="w-full text-destructive hover:text-destructive"
-                  onClick={() => setOrderToDecline(orderId)}
+                  className="w-full text-red-600 hover:text-red-700"
+                  onClick={() => setOrderToDecline(order.id)}
                 >
                   Decline Order
                 </Button>
@@ -165,15 +156,12 @@ const IncomingOrders = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Decline Order</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to decline this order? This action cannot be undone and the order will be cancelled.
+                    Are you sure you want to decline this order?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Order</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => handleDeclineOrder(orderId)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleDeclineOrder(order.id)}>
                     Decline Order
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -194,13 +182,10 @@ const IncomingOrders = () => {
               View Details
             </Button>
             <Button 
-              variant="supplier" 
+              variant="default" 
               size="sm" 
-              className="w-full"
-              onClick={async () => {
-                await updateOrderStatus(orderId, "Packed");
-                setOrderStatuses(prev => ({ ...prev, [orderId]: "Packed" }));
-              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => handleStatusUpdate(order.id, "Packed")}
             >
               Mark as Packed
             </Button>
@@ -219,13 +204,10 @@ const IncomingOrders = () => {
               View Details
             </Button>
             <Button 
-              variant="supplier" 
+              variant="default" 
               size="sm" 
-              className="w-full"
-              onClick={async () => {
-                await updateOrderStatus(orderId, "Shipped");
-                setOrderStatuses(prev => ({ ...prev, [orderId]: "Shipped" }));
-              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => handleStatusUpdate(order.id, "Shipped")}
             >
               Mark as Shipped
             </Button>
@@ -244,13 +226,10 @@ const IncomingOrders = () => {
               View Details
             </Button>
             <Button 
-              variant="supplier" 
+              variant="default" 
               size="sm" 
-              className="w-full"
-              onClick={async () => {
-                await updateOrderStatus(orderId, "Out for Delivery");
-                setOrderStatuses(prev => ({ ...prev, [orderId]: "Out for Delivery" }));
-              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => handleStatusUpdate(order.id, "Out for Delivery")}
             >
               Mark as Out for Delivery
             </Button>
@@ -269,13 +248,10 @@ const IncomingOrders = () => {
               View Details
             </Button>
             <Button 
-              variant="supplier" 
+              variant="default" 
               size="sm" 
-              className="w-full"
-              onClick={async () => {
-                await updateOrderStatus(orderId, "Delivered");
-                setOrderStatuses(prev => ({ ...prev, [orderId]: "Delivered" }));
-              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => handleStatusUpdate(order.id, "Delivered")}
             >
               Mark as Delivered
             </Button>
@@ -298,7 +274,7 @@ const IncomingOrders = () => {
             </div>
           </div>
         );
-      case "Cancelled":
+      default:
         return (
           <div className="space-y-2">
             <Button 
@@ -310,121 +286,139 @@ const IncomingOrders = () => {
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
-            <div className="text-center text-sm text-destructive">
-              Order Cancelled
-            </div>
           </div>
         );
-      default:
-        return null;
     }
   };
-
-
-
+  
+  // Show loading state
+  if (authLoading || loading) {
+    return (
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+        </header>
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full"></div>
+            <span className="ml-3 text-muted-foreground">Loading orders...</span>
+          </div>
+        </div>
+      </>
+    );
+  }
+  
+  // Show error state
+  if (authError) {
+    return (
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+        </header>
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-destructive mb-4">Authentication Error</div>
+            <div className="text-sm text-muted-foreground mb-4">{authError}</div>
+            <Button onClick={() => navigate('/supplier-login')}>Go to Login</Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+  
+  // Show not authenticated state
+  if (!user) {
+    return (
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+        </header>
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-destructive mb-4">Not Logged In</div>
+            <div className="text-sm text-muted-foreground mb-4">Please log in to access this page.</div>
+            <Button onClick={() => navigate('/supplier-login')}>Go to Login</Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+  
   return (
     <>
       {/* Header */}
       <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
         <SidebarTrigger className="mr-4" />
         <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
-        <Badge variant="secondary" className="ml-auto">
-          {activeOrders.filter(order => orderStatuses[order.id] === "Pending").length} pending
-        </Badge>
       </header>
 
-          {/* Content */}
-          <div className="p-6">
-            <div className="space-y-6">
-              {loading ? (
-                <div className="text-center py-12">Loading orders...</div>
-              ) : activeOrders.length === 0 ? (
-                <div className="text-center py-12">
-                  <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">No incoming orders</h2>
-                  <p className="text-muted-foreground mb-6">
-                    Orders placed by vendors will appear here.
-                  </p>
-                </div>
-              ) : (
-                activeOrders.map((order) => (
-                  <Card key={order.id} className="overflow-hidden">
-                    <CardHeader className="bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-lg">Order #{order.id}</CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}
-                          </p>
-                        </div>
-                        <Badge className={getStatusColor(orderStatuses[order.id])}>
-                          {getStatusIcon(orderStatuses[order.id])}
-                          <span className="ml-1">{orderStatuses[order.id]}</span>
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        {/* Order Items */}
-                        <div>
-                          <h4 className="font-semibold mb-3">Order Items</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>{order.product?.name || order.product_id}</span>
-                              <span>{order.quantity} units</span>
-                            </div>
-                          </div>
-                          <div className="mt-4 pt-3 border-t">
-                            <div className="flex justify-between font-semibold">
-                              <span>Total Amount</span>
-                              <span className="text-supplier-primary">₹{order.total_amount}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Status Management */}
-                        <div className="space-y-4">
-                          <div>
-                            <h4 className="font-semibold mb-3">Order Status</h4>
-                            {orderStatuses[order.id] !== "Pending" && orderStatuses[order.id] !== "Cancelled" && (
-                              <Select 
-                                value={orderStatuses[order.id]} 
-                                onValueChange={async (value) => {
-                                  await updateOrderStatus(order.id, value as any);
-                                  setOrderStatuses(prev => ({ ...prev, [order.id]: value }));
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                  <SelectItem value="Packed">Packed</SelectItem>
-                                  <SelectItem value="Shipped">Shipped</SelectItem>
-                                  <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-                                  <SelectItem value="Delivered">Delivered</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            {getNextStatusButton(order.id, orderStatuses[order.id])}
-                          </div>
-
-                          {orderStatuses[order.id] !== "Pending" && orderStatuses[order.id] !== "Cancelled" && (
-                            <div className="text-xs text-muted-foreground">
-                              Status can be updated using the dropdown above
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
+      {/* Content */}
+      <div className="p-6">
+        {/* Orders List */}
+        {displayOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No incoming orders</h2>
+            <p className="text-muted-foreground mb-6">
+              Orders placed by vendors will appear here.
+            </p>
           </div>
+        ) : (
+          <div className="space-y-6">
+            {displayOrders.map((order) => (
+              <Card key={order.id} className="overflow-hidden">
+                <CardHeader className="bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Unknown'}
+                      </p>
+                    </div>
+                    <Badge className={getStatusColor(order.status)}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-1">{order.status}</span>
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {/* Order Items */}
+                    <div>
+                      <h4 className="font-semibold mb-3">Order Items</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>{order.product?.name || order.product_id || 'Unknown Product'}</span>
+                          <span>{order.quantity} units</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3 border-t">
+                        <div className="flex justify-between font-semibold">
+                          <span>Total Amount</span>
+                          <span className="text-green-600">₹{order.total_amount}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status Management */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        {getStatusButtons(order)}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Order Details Dialog */}
       <AlertDialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
@@ -437,29 +431,18 @@ const IncomingOrders = () => {
               {/* Order Information */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Order Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-2 text-sm">
                   <div>
                     <span className="font-medium">Order ID:</span>
                     <div className="text-muted-foreground">{selectedOrderDetails.id}</div>
                   </div>
                   <div>
-                    <span className="font-medium">Order Date:</span>
-                    <div className="text-muted-foreground">
-                      {new Date(selectedOrderDetails.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div>
                     <span className="font-medium">Status:</span>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(selectedOrderDetails.status)}>
-                        {getStatusIcon(selectedOrderDetails.status)}
-                        <span className="ml-1">{selectedOrderDetails.status}</span>
-                      </Badge>
-                    </div>
+                    <div className="text-muted-foreground">{selectedOrderDetails.status}</div>
                   </div>
                   <div>
                     <span className="font-medium">Total Amount:</span>
-                    <div className="text-supplier-primary font-semibold">₹{selectedOrderDetails.total_amount}</div>
+                    <div className="text-green-600 font-semibold">₹{selectedOrderDetails.total_amount}</div>
                   </div>
                 </div>
               </div>
@@ -470,15 +453,11 @@ const IncomingOrders = () => {
                 <div className="space-y-2 text-sm">
                   <div>
                     <span className="font-medium">Product Name:</span>
-                    <div className="text-muted-foreground">{selectedOrderDetails.product?.name || selectedOrderDetails.product_id}</div>
+                    <div className="text-muted-foreground">{selectedOrderDetails.product?.name || selectedOrderDetails.product_id || 'Unknown'}</div>
                   </div>
                   <div>
                     <span className="font-medium">Quantity:</span>
                     <div className="text-muted-foreground">{selectedOrderDetails.quantity} units</div>
-                  </div>
-                  <div>
-                    <span className="font-medium">Unit Price:</span>
-                    <div className="text-muted-foreground">₹{selectedOrderDetails.product?.price || 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -504,41 +483,8 @@ const IncomingOrders = () => {
                       <div className="text-muted-foreground">{selectedOrderDetails.vendor?.email || 'N/A'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <span className="font-medium">Phone:</span>
-                      <div className="text-muted-foreground">{selectedOrderDetails.vendor?.phone || 'N/A'}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <span className="font-medium">Location:</span>
-                      <div className="text-muted-foreground">
-                        {selectedOrderDetails.vendor?.city || 'N/A'}{selectedOrderDetails.vendor?.state ? `, ${selectedOrderDetails.vendor.state}` : ''}
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="font-medium">Address:</span>
-                    <div className="text-muted-foreground">{selectedOrderDetails.vendor?.address || 'N/A'}</div>
-                  </div>
                 </div>
               </div>
-
-              {/* Cancellation Info */}
-              {selectedOrderDetails.status === 'Cancelled' && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-lg text-destructive">Cancellation Information</h3>
-                  <div className="text-sm">
-                    <span className="font-medium">Cancelled by:</span>
-                    <div className="text-muted-foreground">
-                      {selectedOrderDetails.cancelled_by === 'vendor' ? 'Vendor' : 'You'}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
           <AlertDialogFooter>
@@ -546,8 +492,8 @@ const IncomingOrders = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </>
-      );
+    </>
+  );
 };
 
 export default IncomingOrders;
