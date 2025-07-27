@@ -217,6 +217,7 @@ const BrowseProducts = () => {
     { value: "spices", label: "Spices" },
     { value: "oils", label: "Oils" },
     { value: "dairy", label: "Dairy" },
+    { value: "fruits", label: "Fruits" },
     { value: "others", label: "Others" },
   ];
 
