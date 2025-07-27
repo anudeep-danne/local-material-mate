@@ -124,6 +124,7 @@ const AddProduct = () => {
                           <SelectContent>
                             <SelectItem value="vegetables">Vegetables</SelectItem>
                             <SelectItem value="grains">Grains</SelectItem>
+                            <SelectItem value="pulses">Pulses</SelectItem>
                             <SelectItem value="spices">Spices</SelectItem>
                             <SelectItem value="oils">Oils</SelectItem>
                             <SelectItem value="dairy">Dairy</SelectItem>

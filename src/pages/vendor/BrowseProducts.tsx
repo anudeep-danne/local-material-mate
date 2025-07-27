@@ -21,6 +21,7 @@ const BrowseProducts = () => {
   const [selectedLocation, setSelectedLocation] = useState("all");
   // Add a separate state for location search
   const [locationSearchTerm, setLocationSearchTerm] = useState("");
+  const [categorySearchTerm, setCategorySearchTerm] = useState("");
 
   // Get authenticated user ID
   const { user } = useAuth();
@@ -208,6 +209,17 @@ const BrowseProducts = () => {
     );
   }
 
+  const allCategories = [
+    { value: "all", label: "All Categories" },
+    { value: "vegetables", label: "Vegetables" },
+    { value: "grains", label: "Grains" },
+    { value: "pulses", label: "Pulses" },
+    { value: "spices", label: "Spices" },
+    { value: "oils", label: "Oils" },
+    { value: "dairy", label: "Dairy" },
+    { value: "others", label: "Others" },
+  ];
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -241,11 +253,22 @@ const BrowseProducts = () => {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="vegetables">Vegetables</SelectItem>
-                  <SelectItem value="fruits">Fruits</SelectItem>
-                  <SelectItem value="grains">Grains</SelectItem>
-                  <SelectItem value="dairy">Dairy</SelectItem>
+                  <div className="p-2 sticky top-0 bg-white z-10">
+                    <input
+                      type="text"
+                      placeholder="Search category..."
+                      className="w-full px-2 py-1 border rounded text-sm outline-none"
+                      value={categorySearchTerm}
+                      onChange={e => setCategorySearchTerm(e.target.value)}
+                      onKeyDown={e => e.stopPropagation()}
+                    />
+                  </div>
+                  {(categorySearchTerm
+                    ? allCategories.filter(cat => cat.label.toLowerCase().includes(categorySearchTerm.toLowerCase()))
+                    : allCategories.filter((cat, idx) => idx < 4 || cat.value === "all")
+                  ).map(cat => (
+                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               

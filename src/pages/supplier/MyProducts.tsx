@@ -19,6 +19,7 @@ const MyProducts = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [productRatings, setProductRatings] = useState<{[key: string]: {averageRating: number, totalReviews: number}}>({});
+  const [categorySearchTerm, setCategorySearchTerm] = useState("");
 
   const supplierId = user?.id;
   const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId || "");
@@ -101,6 +102,17 @@ const MyProducts = () => {
     return "text-red-600";
   };
 
+  const allCategories = [
+    { value: "all", label: "All Categories" },
+    { value: "vegetables", label: "Vegetables" },
+    { value: "grains", label: "Grains" },
+    { value: "pulses", label: "Pulses" },
+    { value: "spices", label: "Spices" },
+    { value: "oils", label: "Oils" },
+    { value: "dairy", label: "Dairy" },
+    { value: "others", label: "Others" },
+  ];
+
   return (
     <>
       {/* Header */}
@@ -136,11 +148,22 @@ const MyProducts = () => {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Vegetables">Vegetables</SelectItem>
-                  <SelectItem value="Grains">Grains</SelectItem>
-                  <SelectItem value="Spices">Spices</SelectItem>
-                  <SelectItem value="Oils">Oils</SelectItem>
+                  <div className="p-2 sticky top-0 bg-white z-10">
+                    <input
+                      type="text"
+                      placeholder="Search category..."
+                      className="w-full px-2 py-1 border rounded text-sm outline-none"
+                      value={categorySearchTerm}
+                      onChange={e => setCategorySearchTerm(e.target.value)}
+                      onKeyDown={e => e.stopPropagation()}
+                    />
+                  </div>
+                  {(categorySearchTerm
+                    ? allCategories.filter(cat => cat.label.toLowerCase().includes(categorySearchTerm.toLowerCase()))
+                    : allCategories.filter((cat, idx) => idx < 4 || cat.value === "all")
+                  ).map(cat => (
+                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
