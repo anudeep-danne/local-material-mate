@@ -358,20 +358,12 @@ const MyOrders = () => {
                                   </div>
                                 </div>
                                 
-                                {/* Order Status Info */}
-                                {(isCancelled || order.accepted_by) && (
+                                {/* Cancellation Info */}
+                                {isCancelled && (
                                   <div className="mt-4 pt-4 border-t">
                                     <div className="text-sm text-muted-foreground">
-                                      {isCancelled ? (
-                                        <span>
-                                          <span className="font-medium">Cancellation:</span> 
-                                          {order.cancelled_by === 'vendor' ? ' Cancelled by you' : ' Cancelled by supplier'}
-                                        </span>
-                                            ) : order.accepted_by === 'supplier' && (order.status === 'Pending' || order.status === 'Confirmed') ? (
-        <span>
-          <span className="font-medium">Status:</span> Accepted by supplier - {order.status}
-        </span>
-                                      ) : null}
+                                      <span className="font-medium">Cancellation:</span> 
+                                      {order.cancelled_by === 'vendor' ? ' Cancelled by you' : ' Cancelled by supplier'}
                                     </div>
                                   </div>
                                 )}

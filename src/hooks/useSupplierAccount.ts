@@ -4,7 +4,7 @@ import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useAccountSync } from './useAccountSync';
 
-export interface VendorAccountData {
+export interface SupplierAccountData {
   id: string;
   name: string;
   email: string | null;
@@ -22,8 +22,8 @@ export interface VendorAccountData {
   updated_at?: string;
 }
 
-export function useVendorAccount() {
-  const [accountData, setAccountData] = useState<VendorAccountData | null>(null);
+export function useSupplierAccount() {
+  const [accountData, setAccountData] = useState<SupplierAccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function useVendorAccount() {
   const { toast } = useToast();
   const { updateAccountAndSync } = useAccountSync();
 
-  // Fetch vendor account data
+  // Fetch supplier account data
   const fetchAccountData = async () => {
     if (!user?.id) {
       setLoading(false);
@@ -49,7 +49,7 @@ export function useVendorAccount() {
         .single();
 
       if (fetchError) {
-        console.error('Error fetching vendor account data:', fetchError);
+        console.error('Error fetching supplier account data:', fetchError);
         setError(fetchError.message);
         toast({
           title: "Error",
@@ -72,8 +72,8 @@ export function useVendorAccount() {
     }
   };
 
-  // Update vendor account data
-  const updateAccountData = async (updates: Partial<VendorAccountData>) => {
+  // Update supplier account data
+  const updateAccountData = async (updates: Partial<SupplierAccountData>) => {
     if (!user?.id) {
       toast({
         title: "Error",
@@ -90,7 +90,7 @@ export function useVendorAccount() {
       // Remove updated_at from updates since it might not exist in the database yet
       const { updated_at, ...updateData } = updates;
 
-      console.log('🔍 Updating vendor account data:', { userId: user.id, updateData });
+      console.log('🔍 Updating supplier account data:', { userId: user.id, updateData });
 
       // Use the sync function to update and broadcast changes
       const success = await updateAccountAndSync(updateData);
@@ -141,4 +141,4 @@ export function useVendorAccount() {
     fetchAccountData,
     updateAccountData,
   };
-} 
+}

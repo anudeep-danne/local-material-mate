@@ -37,7 +37,7 @@ const AccountSettings = () => {
         ownerName: profile.name || "",
         email: profile.email || "",
         phone: profile.phone || "",
-        address: "",
+        address: profile.address || "",
         city: profile.city || "",
         state: profile.state || "",
         pincode: profile.pincode || "",

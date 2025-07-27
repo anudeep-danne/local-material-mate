@@ -1,34 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { toast } from 'sonner';
 
 type Product = Database['public']['Tables']['products']['Row'] & {
-  supplier: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    business_name: string;
-    phone: string;
-    city: string;
-    state: string;
-    pincode: string;
-    latitude: number;
-    longitude: number;
-    description: string;
-    created_at: string;
-  };
+  supplier: Database['public']['Tables']['users']['Row'];
 };
 
-interface ProductFilters {
+export const useProducts = (filters?: {
   category?: string;
+  supplierId?: string;
   priceMin?: number;
   priceMax?: number;
-  search?: string;
-}
-
-export const useProducts = (supplierId?: string, filters?: ProductFilters) => {
+}) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +19,8 @@ export const useProducts = (supplierId?: string, filters?: ProductFilters) => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      setError(null);
+      console.log('🔄 useProducts: Fetching products with filters:', filters);
       
-      console.log('📦 useProducts: Fetching products with supplierId:', supplierId);
-      console.log('📦 useProducts: Applied filters:', filters);
-
       let query = supabase
         .from('products')
         .select(`
@@ -52,32 +32,20 @@ export const useProducts = (supplierId?: string, filters?: ProductFilters) => {
             role,
             business_name,
             phone,
+            address,
             city,
             state,
             pincode,
-            latitude,
-            longitude,
-            description,
-            created_at
+            description
           )
         `);
 
-      // Apply supplier filter if provided
-      if (supplierId) {
-        query = query.eq('supplier_id', supplierId);
-      }
-
-      // Apply category filter
       if (filters?.category) {
         query = query.eq('category', filters.category);
       }
-
-      // Apply search filter
-      if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,category.ilike.%${filters.search}%`);
+      if (filters?.supplierId) {
+        query = query.eq('supplier_id', filters.supplierId);
       }
-
-      // Apply price filters
       if (filters?.priceMin !== undefined) {
         query = query.gte('price', filters.priceMin);
       }
@@ -94,98 +62,49 @@ export const useProducts = (supplierId?: string, filters?: ProductFilters) => {
       
       console.log('📦 useProducts: Raw product data:', data);
       
-      // Type assertion and validation
-      const processedData = (data as Product[]).filter(product => {
-        // Validate supplier data exists
-        if (!product.supplier || typeof product.supplier !== 'object') {
-          console.warn('⚠️ Product missing supplier data:', product.id);
-          return false;
-        }
-        return true;
+      // Use the actual supplier data without overriding it
+      const processedData = (data as Product[]).map(product => {
+        console.log('🔍 useProducts: Processing product:', product.name, 'Supplier:', product.supplier);
+        
+        // Return the product with its actual supplier data
+        // Each product will show its real creator's information
+        return product;
       });
       
       console.log('✅ useProducts: Processed products:', processedData);
       setProducts(processedData);
     } catch (err) {
-      console.error('❌ useProducts: Error in fetchProducts:', err);
+      console.error('❌ useProducts: Unexpected error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
-      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const addProduct = async (productData: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .insert(productData)
-        .select();
-
-      if (error) throw error;
-
-      toast.success('Product added successfully!');
-      await fetchProducts(); // Refresh the products list
-      return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add product';
-      setError(message);
-      toast.error(message);
-      throw err;
-    }
-  };
-
-  const updateProduct = async (productId: string, productData: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .update(productData)
-        .eq('id', productId)
-        .select();
-
-      if (error) throw error;
-
-      toast.success('Product updated successfully!');
-      await fetchProducts(); // Refresh the products list
-      return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update product';
-      setError(message);
-      toast.error(message);
-      throw err;
-    }
-  };
-
-  const deleteProduct = async (productId: string) => {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
-
-      toast.success('Product deleted successfully!');
-      await fetchProducts(); // Refresh the products list
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete product';
-      setError(message);
-      toast.error(message);
-      throw err;
-    }
-  };
-
   useEffect(() => {
     fetchProducts();
-  }, [supplierId, filters?.category, filters?.search, filters?.priceMin, filters?.priceMax]);
+  }, [JSON.stringify(filters)]);
 
-  return {
-    products,
-    loading,
-    error,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    refetch: fetchProducts
-  };
+  // Listen for account updates to refresh product data
+  useEffect(() => {
+    const handleAccountUpdate = (event: CustomEvent) => {
+      console.log('🔄 Products: Account update received, refreshing products');
+      fetchProducts();
+    };
+
+    const handleSupplierUpdate = (event: CustomEvent) => {
+      console.log('🔄 Products: Supplier update received, refreshing products');
+      fetchProducts();
+    };
+
+    window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);
+    window.addEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
+      window.removeEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
+    };
+  }, []);
+
+  return { products, loading, error, refetch: fetchProducts };
 };

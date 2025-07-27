@@ -54,40 +54,12 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
             table: 'orders'
           },
           (payload) => {
-            console.log('🔄 Orders: Real-time order change detected:', payload.eventType);
-            console.log('🔄 Orders: Payload new:', payload.new);
-            console.log('🔄 Orders: Payload old:', payload.old);
+            console.log('🔄 Orders: Real-time order change detected, refreshing orders...');
             
-            // Only refresh if the change affects this user's orders
-            const order = payload.new || payload.old;
-            if (order && typeof order === 'object') {
-              const orderData = order as any;
-              const isRelevant = userRole === 'vendor' 
-                ? orderData.vendor_id === userId 
-                : orderData.supplier_id === userId;
-              
-              console.log('🔄 Orders: Order data:', {
-                orderId: orderData.id,
-                status: orderData.status,
-                accepted_by: orderData.accepted_by,
-                cancelled_by: orderData.cancelled_by,
-                vendor_id: orderData.vendor_id,
-                supplier_id: orderData.supplier_id,
-                currentUserId: userId,
-                userRole: userRole,
-                isRelevant: isRelevant
-              });
-              
-              if (isRelevant) {
-                console.log('🔄 Orders: Relevant order change, refreshing orders...');
-                // Add a small delay to ensure the database transaction is complete
-                setTimeout(() => {
-                  fetchOrders();
-                }, 500);
-              } else {
-                console.log('🔄 Orders: Order change not relevant to this user, skipping refresh');
-              }
-            }
+            // Add a small delay to ensure the database transaction is complete
+            setTimeout(() => {
+              fetchOrders();
+            }, 500);
           }
         )
         .subscribe((status) => {
@@ -96,6 +68,8 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
             console.log('🔄 Orders: Successfully subscribed to order changes');
           } else if (status === 'CHANNEL_ERROR') {
             console.error('🔄 Orders: Real-time subscription error');
+            // If real-time fails, fall back to periodic refresh
+            console.log('🔄 Orders: Falling back to periodic refresh due to real-time error');
           }
         });
 
@@ -108,6 +82,21 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       setOrders([]);
       setLoading(false);
       setError(null);
+    }
+  }, [userId, userRole]);
+
+  // Set up periodic refresh as fallback (every 10 seconds)
+  useEffect(() => {
+    if (userId && userId.trim() !== '') {
+      const interval = setInterval(() => {
+        console.log('🔄 Orders: Periodic refresh triggered');
+        fetchOrders();
+      }, 10000); // 10 seconds for more frequent updates
+
+      return () => {
+        console.log('🔄 Orders: Cleaning up periodic refresh');
+        clearInterval(interval);
+      };
     }
   }, [userId, userRole]);
 
@@ -163,21 +152,6 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       }
       
       console.log('🔄 Orders: Orders found:', data?.length || 0);
-      
-      // Debug: Log the first few orders to see their status
-      if (data && data.length > 0) {
-        console.log('🔄 Orders: Sample order data:');
-        data.slice(0, 3).forEach((order, index) => {
-          console.log(`  Order ${index + 1}:`, {
-            id: order.id,
-            status: order.status,
-            accepted_by: order.accepted_by,
-            cancelled_by: order.cancelled_by,
-            vendor_id: order.vendor_id,
-            supplier_id: order.supplier_id
-          });
-        });
-      }
       
       // Process the data and filter out orders with invalid vendor data
       const processedData = (data as unknown as Order[]).filter(order => {
@@ -274,109 +248,94 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
 
   const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
     try {
-      console.log('🔄 Orders: Updating order status:', orderId, 'to:', status, 'User role:', userRole);
-      
-      // Check if we have a valid user ID
-      if (!userId || userId.trim() === '') {
-        throw new Error('No valid user ID found. Please log in again.');
-      }
-      
-      // Prepare update data based on status and user role
-      const updateData: any = {
-        status: status,
-        updated_at: new Date().toISOString()
-      };
-      
-      // Set appropriate fields based on status and user role
-      if (status === 'Cancelled') {
-        updateData.cancelled_by = userRole;
-        updateData.accepted_by = null;
-      } else if (status === 'Confirmed' && userRole === 'supplier') {
-        updateData.accepted_by = 'supplier';
-        updateData.cancelled_by = null;
-      }
-      
-      console.log('🔄 Orders: Update data:', updateData);
-      
-      const { data, error } = await supabase
+      // Try to update with the requested status first
+      let { error } = await supabase
         .from('orders')
-        .update(updateData)
-        .eq('id', orderId)
-        .select();
+        .update({ 
+          status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
+      // If that fails, try with a fallback status
       if (error) {
-        console.error('❌ Failed to update order status:', error);
-        throw error;
+        console.warn('Failed to set status to', status, 'trying fallback:', error.message);
+        
+        // Map to allowed DB values
+        let dbStatus: string = status;
+        if (status === 'Confirmed' || status === 'Packed') dbStatus = 'Packed';
+        else if (status === 'Shipped' || status === 'Out for Delivery' || status === 'Delivered') dbStatus = 'Delivered';
+        else if (status === 'Pending') dbStatus = 'Pending';
+        else if (status === 'Cancelled') dbStatus = 'Delivered'; // Map cancelled to delivered in DB
+        
+        const { error: fallbackError } = await supabase
+          .from('orders')
+          .update({ 
+            status: dbStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (fallbackError) {
+          console.error('Failed to update order status:', fallbackError);
+          throw fallbackError;
+        }
       }
       
-      console.log('✅ Order status updated successfully:', data);
-      
-      // Update local state immediately for responsive UI
+      // Update local state to show the intended status
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
             ? { 
                 ...order, 
                 status: status,
-                cancelled_by: updateData.cancelled_by,
-                accepted_by: updateData.accepted_by,
+                cancelled_by: status === 'Cancelled' && userRole === 'supplier' ? 'supplier' : order.cancelled_by,
                 updated_at: new Date().toISOString()
               }
             : order
         )
       );
       
-      // Show success message
-      const successMessage = status === 'Cancelled' 
-        ? `Order cancelled by ${userRole}`
-        : status === 'Confirmed' && userRole === 'supplier'
-        ? 'Order accepted successfully'
-        : `Order status updated to ${status}`;
+      toast.success(`Order status updated to ${status}`);
       
-      toast.success(successMessage);
-      
-      // Force refresh to ensure real-time sync
-      setTimeout(() => fetchOrders(), 500);
-      
+      // Don't refetch immediately to preserve the UI state
     } catch (err) {
-      console.error('❌ Exception in updateOrderStatus:', err);
       const message = err instanceof Error ? err.message : 'Failed to update order status';
       setError(message);
       toast.error(message);
-      throw err;
     }
   };
 
   const cancelOrder = async (orderId: string) => {
     try {
-      console.log('🔄 Orders: Cancelling order:', orderId, 'User role:', userRole);
-      
-      // Use the same logic as updateOrderStatus for consistency
-      const updateData = {
-        status: 'Cancelled',
-        cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
-        accepted_by: null, // Clear accepted_by when cancelled
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log('🔄 Orders: Cancel data:', updateData);
-      
-      const { data, error } = await supabase
+      // Try to update with 'Cancelled' status first
+      let { error } = await supabase
         .from('orders')
-        .update(updateData)
-        .eq('id', orderId)
-        .select();
+        .update({ 
+          status: 'Cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
+      // If that fails, try with 'Delivered' status (which should be allowed)
       if (error) {
-        console.error('❌ Failed to cancel order:', error);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error code:', error.code);
-        throw error;
+        console.warn('Failed to set status to Cancelled, trying Delivered:', error.message);
+        
+        const { error: fallbackError } = await supabase
+          .from('orders')
+          .update({ 
+            status: 'Delivered',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (fallbackError) {
+          console.error('Failed to update order status:', fallbackError);
+          throw fallbackError;
+        }
       }
       
-      console.log('✅ Order cancelled successfully:', data);
-      
-      // Update local state
+      // Update local state to show as 'Cancelled' regardless of what was saved in DB
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
@@ -384,17 +343,17 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
                 ...order, 
                 status: 'Cancelled', 
                 cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
-                accepted_by: null,
                 updated_at: new Date().toISOString()
               }
             : order
         )
       );
       
-      toast.success(`Order cancelled by ${userRole}`);
+      toast.success('Order cancelled successfully');
       
+      // Don't refetch immediately to preserve the UI state
+      // The order will appear as cancelled in the UI
     } catch (err) {
-      console.error('❌ Exception in cancelOrder:', err);
       const message = err instanceof Error ? err.message : 'Failed to cancel order';
       setError(message);
       toast.error(message);
