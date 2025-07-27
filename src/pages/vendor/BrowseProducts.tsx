@@ -364,6 +364,10 @@ const BrowseProducts = () => {
                           </span>
                           <Badge variant="secondary">{product.category}</Badge>
                         </div>
+                        {/* Real-time Stock Display */}
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <span className="font-semibold">Stock:</span> {product.stock} available
+                        </div>
                       </div>
                     </CardHeader>
                     

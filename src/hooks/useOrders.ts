@@ -232,71 +232,52 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: 'Pending' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled') => {
+  // Update order status and reduce stock if needed
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      console.log('🔄 Orders: Updating order status:', orderId, 'to:', status);
-      
-      // Try to update with the requested status first
-      let { error } = await supabase
+      // Fetch the order to get current status, product_id, quantity, and stock_updated
+      const { data: order, error: orderError } = await supabase
         .from('orders')
-        .update({ 
-          status: status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+        .select('*')
+        .eq('id', orderId)
+        .single();
+      if (orderError || !order) throw orderError || new Error('Order not found');
 
-      // If that fails, try with a fallback status
-      if (error) {
-        console.warn('Failed to set status to', status, 'trying fallback:', error.message);
-        
-        // Map to allowed DB values - use the actual status instead of fallback
-        let dbStatus: string = status;
-        if (status === 'Pending') dbStatus = 'Pending';
-        else if (status === 'Packed') dbStatus = 'Packed';
-        else if (status === 'Shipped') dbStatus = 'Shipped';
-        else if (status === 'Out for Delivery') dbStatus = 'Out for Delivery';
-        else if (status === 'Delivered') dbStatus = 'Delivered';
-        else if (status === 'Cancelled') dbStatus = 'Cancelled';
-        
-        console.log('🔄 Orders: Using fallback status:', dbStatus);
-        
-        const { error: fallbackError } = await supabase
+      // Only reduce stock if status is being set to 'Packed' and not already reduced
+      if (newStatus === 'Packed' && !order.stock_updated) {
+        // Fetch the product to get current stock
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', order.product_id)
+          .single();
+        if (productError || !product) throw productError || new Error('Product not found');
+        const newStock = Math.max(0, product.stock - order.quantity);
+        // Update product stock
+        const { error: stockError } = await supabase
+          .from('products')
+          .update({ stock: newStock })
+          .eq('id', order.product_id);
+        if (stockError) throw stockError;
+        // Mark order as stock_updated
+        const { error: markError } = await supabase
           .from('orders')
-          .update({ 
-            status: dbStatus,
-            updated_at: new Date().toISOString()
-          })
+          .update({ stock_updated: true })
           .eq('id', orderId);
-
-        if (fallbackError) {
-          console.error('Failed to update order status:', fallbackError);
-          throw fallbackError;
-        }
-      } else {
-        console.log('✅ Orders: Status updated successfully to:', status);
+        if (markError) throw markError;
       }
-      
-      // Update local state to show the intended status
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { 
-                ...order, 
-                status: status,
-                cancelled_by: status === 'Cancelled' && userRole === 'supplier' ? 'supplier' : order.cancelled_by,
-                updated_at: new Date().toISOString()
-              }
-            : order
-        )
-      );
-      
-      toast.success(`Order status updated to ${status}`);
-      
-      // Don't refetch immediately to preserve the UI state
+      // Update order status
+      const { error: statusError } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+      if (statusError) throw statusError;
+      // Refresh orders
+      await fetchOrders();
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update order status';
-      setError(message);
-      toast.error(message);
+      setError(err instanceof Error ? err.message : 'Failed to update order status');
+      return false;
     }
   };
 
