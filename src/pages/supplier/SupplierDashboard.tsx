@@ -145,29 +145,63 @@ const SupplierDashboard = () => {
               </Card>
             </div>
 
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-supplier-primary">Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {stats.recentActivity.length > 0 ? (
-                  stats.recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between text-sm">
-                      <span>{activity.message}</span>
-                      <span className={getStatusColor(activity.status || '')}>
-                        {activity.status || formatTimeAgo(activity.timestamp)}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4">
-                    <Inbox className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No recent activity</p>
+            {/* Quick Actions */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-supplier-primary">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button 
+                    variant="supplier" 
+                    className="w-full justify-start"
+                    onClick={() => navigate('/supplier/add-product')}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add New Product
+                  </Button>
+                  <Button 
+                    variant="supplier-outline" 
+                    className="w-full justify-start"
+                    onClick={() => navigate('/supplier/orders')}
+                  >
+                    <Inbox className="mr-2 h-4 w-4" />
+                    Check Orders ({stats.pendingOrders} pending)
+                  </Button>
+                  <Button 
+                    variant="supplier-outline" 
+                    className="w-full justify-start"
+                    onClick={() => navigate('/supplier/products')}
+                  >
+                    <Package className="mr-2 h-4 w-4" />
+                    Manage Products
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-supplier-primary">Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {stats.recentActivity.length > 0 ? (
+                    stats.recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center justify-between text-sm">
+                        <span>{activity.message}</span>
+                        <span className={getStatusColor(activity.status || '')}>
+                          {activity.status || formatTimeAgo(activity.timestamp)}
+                        </span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <Inbox className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
+                  </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Top Products */}
             <Card>

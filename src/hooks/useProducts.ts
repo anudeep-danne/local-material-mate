@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
@@ -15,9 +15,8 @@ export const useProducts = (filters?: {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchRef = useRef<() => Promise<void>>();
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = async () => {
     try {
       setLoading(true);
       console.log('🔄 useProducts: Fetching products with filters:', filters);
@@ -54,25 +53,25 @@ export const useProducts = (filters?: {
         query = query.lte('price', filters.priceMax);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.gt('stock', 0).order('created_at', { ascending: false });
 
       if (error) {
         console.error('❌ useProducts: Error fetching products:', error);
         throw error;
       }
       
-      console.log('✅ useProducts: Fetched', data?.length || 0, 'products');
-      
-      // Temporary debug: Log first product structure
-      if (data && data.length > 0) {
-        console.log('🔍 useProducts: First product raw data:', data[0]);
-      }
+      console.log('📦 useProducts: Raw product data:', data);
       
       // Use the actual supplier data without overriding it
       const processedData = (data as Product[]).map(product => {
+        console.log('🔍 useProducts: Processing product:', product.name, 'Supplier:', product.supplier);
+        
+        // Return the product with its actual supplier data
+        // Each product will show its real creator's information
         return product;
       });
       
+      console.log('✅ useProducts: Processed products:', processedData);
       setProducts(processedData);
     } catch (err) {
       console.error('❌ useProducts: Unexpected error:', err);
@@ -80,55 +79,22 @@ export const useProducts = (filters?: {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
-
-  // Store the fetch function in a ref to avoid dependency issues
-  fetchRef.current = fetchProducts;
+  };
 
   useEffect(() => {
     fetchProducts();
-    
-    // Set up real-time subscription for product changes
-    const channel = supabase
-      .channel('products-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'products'
-        },
-        (payload) => {
-          console.log('🔄 useProducts: Product change detected:', payload);
-          // Only refresh if the change is relevant (not just a timestamp update)
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-            if (fetchRef.current) {
-              fetchRef.current();
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []); // Remove fetchProducts dependency to prevent infinite loops
+  }, [JSON.stringify(filters)]);
 
   // Listen for account updates to refresh product data
   useEffect(() => {
     const handleAccountUpdate = (event: CustomEvent) => {
       console.log('🔄 Products: Account update received, refreshing products');
-      if (fetchRef.current) {
-        fetchRef.current();
-      }
+      fetchProducts();
     };
 
     const handleSupplierUpdate = (event: CustomEvent) => {
       console.log('🔄 Products: Supplier update received, refreshing products');
-      if (fetchRef.current) {
-        fetchRef.current();
-      }
+      fetchProducts();
     };
 
     window.addEventListener('accountUpdated', handleAccountUpdate as EventListener);

@@ -63,7 +63,7 @@ export const useCart = (vendorId: string) => {
       
       const { data: product, error: productError } = await supabase
         .from('products')
-        .select('id, name, stock')
+        .select('id, name')
         .eq('id', productId)
         .single();
       
@@ -72,12 +72,7 @@ export const useCart = (vendorId: string) => {
         throw new Error('Product not found');
       }
       
-      // Check stock availability
-      if (product.stock < quantity) {
-        throw new Error(`Insufficient stock. Available: ${product.stock}, Requested: ${quantity}`);
-      }
-      
-      console.log('🛒 useCart: Vendor and product verified:', vendor.name, product.name, 'Stock:', product.stock);
+      console.log('🛒 useCart: Vendor and product verified:', vendor.name, product.name);
       
       // Use UPSERT logic to handle existing items
       const { data, error } = await supabase
@@ -118,8 +113,6 @@ export const useCart = (vendorId: string) => {
           message = 'Vendor account not found. Please log in again.';
         } else if (err.message.includes('Product not found')) {
           message = 'Product not found. Please refresh the page.';
-        } else if (err.message.includes('Insufficient stock')) {
-          message = err.message;
         } else if (err.message.includes('foreign key')) {
           message = 'Product or vendor not found. Please refresh the page.';
         } else if (err.message.includes('duplicate key') || err.message.includes('unique constraint')) {
@@ -160,56 +153,45 @@ export const useCart = (vendorId: string) => {
           throw error;
         }
         toast.success('Item removed from cart');
-        await fetchCart();
-        return;
+      } else {
+        console.log('🛒 useCart: Updating item quantity to:', quantity);
+        
+        // Update the quantity directly
+        const { error: updateError } = await supabase
+          .from('cart')
+          .update({ 
+            quantity: quantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', cartItemId);
+        
+        if (updateError) {
+          console.error('🛒 useCart: Error updating quantity:', updateError);
+          throw updateError;
+        }
+        
+        console.log('🛒 useCart: Successfully updated quantity to:', quantity);
+        toast.success('Cart updated successfully');
       }
       
-      // Get the cart item to check product stock
-      const { data: cartItem, error: cartItemError } = await supabase
-        .from('cart')
-        .select(`
-          *,
-          product:products!cart_product_id_fkey(
-            id,
-            name,
-            stock
-          )
-        `)
-        .eq('id', cartItemId)
-        .single();
-      
-      if (cartItemError || !cartItem) {
-        throw new Error('Cart item not found');
-      }
-      
-      // Check stock availability
-      if (cartItem.product.stock < quantity) {
-        throw new Error(`Insufficient stock. Available: ${cartItem.product.stock}, Requested: ${quantity}`);
-      }
-      
-      // Update quantity
-      const { error } = await supabase
-        .from('cart')
-        .update({ quantity: quantity })
-        .eq('id', cartItemId);
-      
-      if (error) {
-        console.error('🛒 useCart: Error updating quantity:', error);
-        throw error;
-      }
-      
-      console.log('🛒 useCart: Quantity updated successfully');
-      toast.success('Quantity updated');
+      console.log('🛒 useCart: Refreshing cart data after update');
       await fetchCart();
     } catch (err) {
-      console.error('🛒 useCart: Error updating quantity:', err);
+      console.error('🛒 useCart: Error updating cart:', err);
       
-      let message = 'Failed to update quantity';
+      // Provide more specific error messages
+      let message = 'Failed to update cart';
       if (err instanceof Error) {
-        if (err.message.includes('Insufficient stock')) {
-          message = err.message;
+        if (err.message.includes('Cart item ID is required')) {
+          message = 'Cart item not found. Please refresh the page.';
         } else if (err.message.includes('Cart item not found')) {
           message = 'Cart item not found. Please refresh the page.';
+        } else if (err.message.includes('foreign key')) {
+          message = 'Cart item not found. Please refresh the page.';
+        } else if (err.message.includes('permission')) {
+          message = 'Permission denied. Please check your account.';
+        } else if (err.message.includes('quantity')) {
+          message = 'Invalid quantity. Please try again.';
         } else {
           message = err.message;
         }
@@ -217,7 +199,7 @@ export const useCart = (vendorId: string) => {
       
       setError(message);
       toast.error(message);
-      throw err;
+      throw err; // Re-throw to let calling function handle it
     }
   };
 

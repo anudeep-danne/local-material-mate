@@ -6,12 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Search, Plus, Minus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCartContext } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,6 +21,13 @@ const BrowseProducts = () => {
   const { user } = useAuth();
   const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   
+  // Debug: Log vendor ID and user info
+  console.log('🛒 BrowseProducts: User info:', user);
+  console.log('🛒 BrowseProducts: Vendor ID being used:', vendorId);
+  console.log('🛒 BrowseProducts: User authenticated:', !!user);
+  console.log('🛒 BrowseProducts: User ID:', user?.id);
+  console.log('🛒 BrowseProducts: User role:', user?.role);
+  
   const filters = {
     category: selectedCategory === "all" ? undefined : selectedCategory,
     priceMin: priceRange === "50-100" ? 50 : priceRange === "100+" ? 100 : undefined,
@@ -32,19 +37,8 @@ const BrowseProducts = () => {
   const { products, loading, error } = useProducts(filters);
   const { cartItems, addToCart, updateQuantity, removeFromCart } = useCartContext();
   
-  // Debug: Log only when products change significantly
-  console.log('🛒 BrowseProducts: Products count:', products.length, 'Loading:', loading, 'Error:', error);
-  
-  // Temporary debug: Log first product structure
-  if (products.length > 0 && !loading) {
-    console.log('🛒 BrowseProducts: First product structure:', {
-      id: products[0].id,
-      name: products[0].name,
-      supplier: products[0].supplier,
-      stock: products[0].stock,
-      price: products[0].price
-    });
-  }
+  // Debug: Log cart items when they change
+  console.log('🛒 BrowseProducts: Current cart items:', cartItems);
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,20 +64,7 @@ const BrowseProducts = () => {
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
     
-    // Find the product to check stock
-    const product = products.find(p => p.id === productId);
-    if (!product) {
-      console.error('🛒 BrowseProducts: Product not found for stock validation');
-      return;
-    }
-    
-    // Check if new quantity exceeds available stock
-    if (newQuantity > product.stock) {
-      toast.error(`Cannot add more than available stock. Available: ${product.stock}`);
-      return;
-    }
-    
-    console.log('🛒 BrowseProducts: Handling quantity change - Product ID:', productId, 'New quantity:', newQuantity, 'Available stock:', product.stock);
+    console.log('🛒 BrowseProducts: Handling quantity change - Product ID:', productId, 'New quantity:', newQuantity);
     console.log('🛒 BrowseProducts: Current cart items:', cartItems.map(item => ({ id: item.id, product_id: item.product_id, quantity: item.quantity })));
     
     // Update local state immediately for better UX
@@ -257,11 +238,8 @@ const BrowseProducts = () => {
                         <span className="text-2xl font-bold text-vendor-primary">
                           ₹{product.price}
                         </span>
-                        <Badge 
-                          variant={product.stock === 0 ? "destructive" : product.stock <= 10 ? "secondary" : "default"}
-                          className={product.stock === 0 ? "bg-red-500 text-white" : product.stock <= 10 ? "bg-yellow-500 text-white" : ""}
-                        >
-                          {product.stock === 0 ? 'Out of Stock' : product.stock <= 10 ? `Low Stock: ${product.stock}` : `In Stock: ${product.stock}`}
+                        <Badge variant="secondary">
+                          Stock: {product.stock}
                         </Badge>
                       </div>
 
@@ -293,10 +271,16 @@ const BrowseProducts = () => {
                           className="w-full"
                           onClick={async () => {
                             try {
+                              console.log('🛒 BrowseProducts: Add to cart button clicked for product:', product.id);
+                              console.log('🛒 BrowseProducts: Current vendor ID:', vendorId);
+                              console.log('🛒 BrowseProducts: Product details:', { id: product.id, name: product.name, price: product.price });
                               setQuantityStates(prev => ({ ...prev, [product.id]: 1 }));
+                              console.log('🛒 BrowseProducts: Calling addToCart with:', { productId: product.id, quantity: 1, vendorId });
                               await addToCart(product.id, 1);
+                              console.log('🛒 BrowseProducts: Successfully added product to cart:', product.id);
                             } catch (error) {
                               console.error('🛒 BrowseProducts: Error adding product to cart:', error);
+                              console.error('🛒 BrowseProducts: Error details:', { message: error.message, stack: error.stack });
                               // Revert local state on failure
                               setQuantityStates(prev => ({ ...prev, [product.id]: 0 }));
                             }
