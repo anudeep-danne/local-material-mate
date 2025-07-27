@@ -12,6 +12,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const EditProduct = () => {
   const navigate = useNavigate();
@@ -69,12 +70,34 @@ const EditProduct = () => {
     setLoading(true);
     
     try {
+      let imageUrl = formData.image_url;
+      if (formData.image) {
+        // Upload image to Supabase Storage
+        const fileExt = formData.image.name.split('.').pop();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const { data, error } = await supabase.storage.from('product-images').upload(fileName, formData.image, { upsert: true });
+        if (error) {
+          toast.error('Image upload failed: ' + error.message);
+          console.error('Image upload failed:', error);
+          setLoading(false);
+          return;
+        }
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        if (!publicUrlData?.publicUrl) {
+          toast.error('Failed to get public image URL.');
+          console.error('Get public URL failed:', publicUrlData);
+          setLoading(false);
+          return;
+        }
+        imageUrl = publicUrlData.publicUrl;
+      }
       const updateData = {
         name: formData.name,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
         category: formData.category,
-        image_url: formData.image_url || null
+        image_url: imageUrl || null
       };
       
       const success = await updateProduct(productId, updateData);
@@ -87,6 +110,7 @@ const EditProduct = () => {
       }
     } catch (err) {
       toast.error("An error occurred while updating the product");
+      console.error(err);
     } finally {
       setLoading(false);
     }
