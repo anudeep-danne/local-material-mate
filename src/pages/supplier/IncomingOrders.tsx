@@ -3,6 +3,7 @@ import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,9 +31,37 @@ const IncomingOrders = () => {
   
   const [orderToDecline, setOrderToDecline] = useState<string | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<any>(null);
+  const [orderFilter, setOrderFilter] = useState<string>('active');
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
   
-  // Filter out cancelled orders from incoming orders
-  const activeOrders = orders.filter(order => order.status !== 'Cancelled');
+  // Filter orders based on selected filter and quick filter
+  const getFilteredOrders = () => {
+    let filtered = [];
+    
+    switch (orderFilter) {
+      case 'active':
+        filtered = orders.filter(order => 
+          ['Pending', 'Packed', 'Shipped', 'Out for Delivery'].includes(order.status)
+        );
+        break;
+      case 'delivered':
+        filtered = orders.filter(order => order.status === 'Delivered');
+        break;
+      default:
+        filtered = orders.filter(order => 
+          ['Pending', 'Packed', 'Shipped', 'Out for Delivery'].includes(order.status)
+        );
+    }
+    
+    // Apply quick filter if set
+    if (quickFilter && orderFilter === 'active') {
+      filtered = filtered.filter(order => order.status === quickFilter);
+    }
+    
+    return filtered;
+  };
+  
+  const filteredOrders = getFilteredOrders();
   
   // Status color function
   const getStatusColor = (status: string) => {
@@ -156,6 +185,26 @@ const IncomingOrders = () => {
   const getStatusButtons = (order: any) => {
     const currentStatus = order.status;
     
+    // For delivered orders, only show view details
+    if (currentStatus === "Delivered") {
+      return (
+        <div className="space-y-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full"
+            onClick={() => setSelectedOrderDetails(order)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
+          </Button>
+          <div className="text-center text-sm text-muted-foreground">
+            Order Completed
+          </div>
+        </div>
+      );
+    }
+    
     switch (currentStatus) {
       case "Pending":
         return (
@@ -227,23 +276,6 @@ const IncomingOrders = () => {
             >
               {getNextStatusLabel(currentStatus)}
             </Button>
-          </div>
-        );
-      case "Delivered":
-        return (
-          <div className="space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => setSelectedOrderDetails(order)}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-            <div className="text-center text-sm text-muted-foreground">
-              Order Completed
-            </div>
           </div>
         );
       default:
@@ -328,25 +360,125 @@ const IncomingOrders = () => {
       <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
         <SidebarTrigger className="mr-4" />
         <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
-        <Badge variant="secondary" className="ml-auto">
-          {activeOrders.filter(order => order.status === "Pending").length} pending
-        </Badge>
+        <div className="ml-auto flex items-center gap-4">
+          <Select value={orderFilter} onValueChange={setOrderFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter orders" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active Orders</SelectItem>
+              <SelectItem value="delivered">Delivered Orders</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            {/* Total Orders Badge */}
+            <Badge variant="secondary">
+              {orderFilter === 'active' 
+                ? `${filteredOrders.length} active`
+                : `${filteredOrders.length} delivered`
+              }
+            </Badge>
+          </div>
+        </div>
       </header>
 
       {/* Content */}
       <div className="p-6">
+        {/* Section Header */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-foreground">
+            {orderFilter === 'active' 
+              ? quickFilter 
+                ? `${quickFilter} Orders` 
+                : 'Active Orders'
+              : 'Delivered Orders'
+            }
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {orderFilter === 'active' 
+              ? quickFilter
+                ? `Showing only ${quickFilter.toLowerCase()} orders`
+                : 'Orders that are pending, packed, shipped, or out for delivery'
+              : 'Orders that have been completed and delivered'
+            }
+          </p>
+          
+          {/* Status Summary for Active Orders */}
+          {orderFilter === 'active' && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Badge 
+                variant="outline" 
+                className={`bg-orange-50 text-orange-700 border-orange-200 cursor-pointer transition-colors ${
+                  quickFilter === 'Pending' ? 'ring-2 ring-orange-300 bg-orange-100' : ''
+                }`}
+                onClick={() => setQuickFilter(quickFilter === 'Pending' ? null : 'Pending')}
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                {orders.filter(order => order.status === "Pending").length} Pending
+              </Badge>
+              <Badge 
+                variant="outline" 
+                className={`bg-yellow-50 text-yellow-700 border-yellow-200 cursor-pointer transition-colors ${
+                  quickFilter === 'Packed' ? 'ring-2 ring-yellow-300 bg-yellow-100' : ''
+                }`}
+                onClick={() => setQuickFilter(quickFilter === 'Packed' ? null : 'Packed')}
+              >
+                <Package className="h-3 w-3 mr-1" />
+                {orders.filter(order => order.status === "Packed").length} Packed
+              </Badge>
+              <Badge 
+                variant="outline" 
+                className={`bg-purple-50 text-purple-700 border-purple-200 cursor-pointer transition-colors ${
+                  quickFilter === 'Shipped' ? 'ring-2 ring-purple-300 bg-purple-100' : ''
+                }`}
+                onClick={() => setQuickFilter(quickFilter === 'Shipped' ? null : 'Shipped')}
+              >
+                <Truck className="h-3 w-3 mr-1" />
+                {orders.filter(order => order.status === "Shipped").length} Shipped
+              </Badge>
+              <Badge 
+                variant="outline" 
+                className={`bg-blue-50 text-blue-700 border-blue-200 cursor-pointer transition-colors ${
+                  quickFilter === 'Out for Delivery' ? 'ring-2 ring-blue-300 bg-blue-100' : ''
+                }`}
+                onClick={() => setQuickFilter(quickFilter === 'Out for Delivery' ? null : 'Out for Delivery')}
+              >
+                <Truck className="h-3 w-3 mr-1" />
+                {orders.filter(order => order.status === "Out for Delivery").length} Out for Delivery
+              </Badge>
+              
+              {/* Clear Filter Button */}
+              {quickFilter && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setQuickFilter(null)}
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear Filter
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Orders List */}
-        {activeOrders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No incoming orders</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              {orderFilter === 'active' ? 'No active orders' : 'No delivered orders'}
+            </h2>
             <p className="text-muted-foreground mb-6">
-              Orders placed by vendors will appear here.
+              {orderFilter === 'active' 
+                ? 'Orders with status Pending, Packed, Shipped, or Out for Delivery will appear here.'
+                : 'Completed orders will appear here.'
+              }
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            {activeOrders.map((order) => (
+            {filteredOrders.map((order) => (
               <Card key={order.id} className="overflow-hidden">
                 <CardHeader className="bg-muted/30">
                   <div className="flex items-center justify-between">
