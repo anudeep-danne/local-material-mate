@@ -146,39 +146,7 @@ const SupplierDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-supplier-primary">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button 
-                    variant="supplier" 
-                    className="w-full justify-start"
-                    onClick={() => navigate('/supplier/add-product')}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add New Product
-                  </Button>
-                  <Button 
-                    variant="supplier-outline" 
-                    className="w-full justify-start"
-                    onClick={() => navigate('/supplier/orders')}
-                  >
-                    <Inbox className="mr-2 h-4 w-4" />
-                    Check Orders ({stats.pendingOrders} pending)
-                  </Button>
-                  <Button 
-                    variant="supplier-outline" 
-                    className="w-full justify-start"
-                    onClick={() => navigate('/supplier/products')}
-                  >
-                    <Package className="mr-2 h-4 w-4" />
-                    Manage Products
-                  </Button>
-                </CardContent>
-              </Card>
-
+            <div className="grid md:grid-cols-1 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-supplier-primary">Recent Activity</CardTitle>
