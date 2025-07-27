@@ -4,11 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-interface AuthFormProps {
-  role: 'vendor' | 'supplier';
-}
-
-const AuthForm = ({ role }: AuthFormProps) => {
+const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +12,7 @@ const AuthForm = ({ role }: AuthFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [role, setRole] = useState<'vendor' | 'supplier'>('vendor');
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
@@ -98,6 +95,23 @@ const AuthForm = ({ role }: AuthFormProps) => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="max-w-md w-full bg-card rounded-lg shadow-lg p-8 flex flex-col items-center">
+        {/* Role Switcher */}
+        <div className="flex justify-center gap-4 mb-4">
+          <button
+            type="button"
+            className={`px-4 py-2 rounded-full border ${role === 'vendor' ? 'bg-vendor-primary text-white' : 'bg-white text-gray-700 border-gray-300'}`}
+            onClick={() => setRole('vendor')}
+          >
+            Vendor
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-2 rounded-full border ${role === 'supplier' ? 'bg-supplier-primary text-white' : 'bg-white text-gray-700 border-gray-300'}`}
+            onClick={() => setRole('supplier')}
+          >
+            Supplier
+          </button>
+        </div>
         <h2 className="text-2xl font-bold mb-4 text-center">{isLogin ? `Login as ${role.charAt(0).toUpperCase() + role.slice(1)}` : `Sign Up as ${role.charAt(0).toUpperCase() + role.slice(1)}`}</h2>
         <form className="w-full space-y-4" onSubmit={handleSubmit}>
           {!isLogin && (
@@ -171,19 +185,21 @@ const AuthForm = ({ role }: AuthFormProps) => {
               id="rememberMe"
             />
             <label htmlFor="rememberMe" className="text-sm">Remember Me</label>
-            <a
-              href="#"
-              className="ml-auto text-xs text-vendor-primary hover:underline"
-              onClick={e => {
-                e.preventDefault();
-                supabase.auth.resetPasswordForEmail(email).then(({ error }) => {
-                  if (error) setError(error.message);
-                  else setError('Password reset email sent!');
-                });
-              }}
-            >
-              Forgot Password?
-            </a>
+            {isLogin && (
+              <a
+                href="#"
+                className="ml-auto text-xs text-vendor-primary hover:underline"
+                onClick={e => {
+                  e.preventDefault();
+                  supabase.auth.resetPasswordForEmail(email).then(({ error }) => {
+                    if (error) setError(error.message);
+                    else setError('Password reset email sent!');
+                  });
+                }}
+              >
+                Forgot Password?
+              </a>
+            )}
           </div>
           {error && <div className="text-destructive text-sm text-center">{error}</div>}
           <Button type="submit" className="w-full text-lg py-3" disabled={loading}>
