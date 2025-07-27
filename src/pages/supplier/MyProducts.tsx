@@ -12,19 +12,45 @@ import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 import { useAuth } from "@/hooks/useAuth";
 import { useProductReviews } from "@/hooks/useProductReviews";
 import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@/components/ui/command";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 const MyProducts = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [productRatings, setProductRatings] = useState<{[key: string]: {averageRating: number, totalReviews: number}}>({});
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   const supplierId = user?.id;
-  const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId || "");
+  const { products, loading: productsLoading, error, deleteProduct } = useSupplierProducts(supplierId || "");
   const { getProductRating } = useProductReviews();
+
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      setDeletingProductId(productId);
+      console.log('=== DELETE PRODUCT DEBUG ===');
+      console.log('Product ID:', productId);
+      console.log('Current user ID:', user?.id);
+      console.log('Supplier ID from hook:', supplierId);
+      
+      const success = await deleteProduct(productId);
+      if (!success) {
+        toast.error("Failed to delete product. Check the console for more details.");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred while deleting the product.";
+      toast.error(errorMessage);
+      console.error("Full error details:", error);
+      console.log('=== END DELETE DEBUG ===');
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
 
   // Fetch product ratings
   useEffect(() => {
@@ -188,7 +214,7 @@ const MyProducts = () => {
             </div>
 
             {/* Products List */}
-            {loading ? (
+            {authLoading || productsLoading ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <Card key={i} className="animate-pulse">
@@ -284,15 +310,41 @@ const MyProducts = () => {
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => deleteProduct(product.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-destructive hover:text-destructive"
+                                  disabled={deletingProductId === product.id}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {deletingProductId === product.id ? "Deleting..." : "Delete"}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Product</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{product.name}"? This action cannot be undone.
+                                    {product.stock > 0 && (
+                                      <span className="block mt-2 text-yellow-600">
+                                        ⚠️ This product has {product.stock} units in stock.
+                                      </span>
+                                    )}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteProduct(product.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete Product
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       </CardContent>
@@ -302,13 +354,13 @@ const MyProducts = () => {
               </div>
             )}
 
-            {filteredProducts.length === 0 && !loading && (
+            {filteredProducts.length === 0 && !authLoading && !productsLoading && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No products found matching your criteria.</p>
               </div>
             )}
 
-            {products.length === 0 && !loading && (
+            {products.length === 0 && !authLoading && !productsLoading && (
               <div className="text-center py-12">
                 <div className="text-muted-foreground mb-4">
                   <Package className="h-16 w-16 mx-auto mb-4" />
