@@ -16,6 +16,12 @@ const AuthForm = ({ role }: AuthFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [address, setAddress] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,6 +66,14 @@ const AuthForm = ({ role }: AuthFormProps) => {
           name,
           email,
           role,
+          ...(role === 'supplier' && {
+            business_name: businessName,
+            phone,
+            city,
+            state,
+            pincode,
+            address,
+          }),
         });
         if (insertError) throw insertError;
         // 3. Sign in immediately (in case session is not set)
@@ -93,6 +107,47 @@ const AuthForm = ({ role }: AuthFormProps) => {
               onChange={e => setName(e.target.value)}
               required
             />
+          )}
+          {/* Supplier extra fields */}
+          {!isLogin && role === 'supplier' && (
+            <>
+              <Input
+                placeholder="Business Name"
+                value={businessName}
+                onChange={e => setBusinessName(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Phone Number"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="City"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="State"
+                value={state}
+                onChange={e => setState(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Pincode"
+                value={pincode}
+                onChange={e => setPincode(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Address"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                required
+              />
+            </>
           )}
           <Input
             type="email"
