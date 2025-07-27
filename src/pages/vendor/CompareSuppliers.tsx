@@ -10,6 +10,7 @@ import { useSuppliers } from "@/hooks/useSuppliers";
 import { useProductComparison } from "@/hooks/useProductComparison";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useProductReviews } from "@/hooks/useProductReviews";
 
 const CompareSuppliers = () => {
   // Get authenticated user ID
@@ -68,6 +69,29 @@ const CompareSuppliers = () => {
 
   const filteredProducts = getFilteredProducts();
 
+  const { getProductRating } = useProductReviews();
+  const [productRatings, setProductRatings] = useState<{ [key: string]: { [supplierId: string]: { averageRating: number, totalReviews: number } } }>({});
+
+  // Fetch product ratings for both suppliers for the selected product
+  useEffect(() => {
+    const fetchRatings = async () => {
+      if (!selectedProduct) return;
+      const ratings: { [key: string]: { [supplierId: string]: { averageRating: number, totalReviews: number } } } = {};
+      for (const supplier of [selectedSupplier1, selectedSupplier2]) {
+        if (supplier && selectedProduct) {
+          const rating = await getProductRating(getProductByName(supplier.id, selectedProduct)?.id, supplier.id);
+          if (!ratings[selectedProduct]) ratings[selectedProduct] = {};
+          ratings[selectedProduct][supplier.id] = {
+            averageRating: rating?.averageRating || 0,
+            totalReviews: rating?.totalReviews || 0
+          };
+        }
+      }
+      setProductRatings(ratings);
+    };
+    fetchRatings();
+  }, [selectedProduct, selectedSupplier1, selectedSupplier2, getProductRating]);
+
   // Memoize the fetch recent suppliers function
   const fetchRecentSuppliers = useCallback(async () => {
     if (!vendorId) {
@@ -106,6 +130,9 @@ const CompareSuppliers = () => {
   const renderProductComparison = () => {
     if (!selectedProduct || !selectedSupplier1 || !selectedSupplier2) return null;
 
+    const rating1 = productRatings[selectedProduct]?.[selectedSupplier1.id];
+    const rating2 = productRatings[selectedProduct]?.[selectedSupplier2.id];
+
     return (
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-4">Product Price Comparison</h3>
@@ -136,9 +163,9 @@ const CompareSuppliers = () => {
                     <span>{selectedSupplier1.city || 'Location not specified'}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    {renderStars(selectedSupplier1.averageRating || 0)}
+                    {renderStars(rating1?.averageRating || 0)}
                     <span className="text-sm text-muted-foreground ml-2">
-                      ({selectedSupplier1.totalReviews || 0} reviews)
+                      ({rating1?.totalReviews || 0} reviews)
                     </span>
                   </div>
                 </div>
@@ -180,9 +207,9 @@ const CompareSuppliers = () => {
                     <span>{selectedSupplier2.city || 'Location not specified'}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    {renderStars(selectedSupplier2.averageRating || 0)}
+                    {renderStars(rating2?.averageRating || 0)}
                     <span className="text-sm text-muted-foreground ml-2">
-                      ({selectedSupplier2.totalReviews || 0} reviews)
+                      ({rating2?.totalReviews || 0} reviews)
                     </span>
                   </div>
                 </div>
@@ -247,44 +274,84 @@ const CompareSuppliers = () => {
             </CardContent>
           </Card>
         )}
-      </div>
-    );
-  };
-
-  const renderSupplierProducts = () => {
-    if (!selectedProduct) return null;
-
-    return (
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Available Products Overview</h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {suppliersWithSelectedProduct.map((supplier) => {
-            const product = getProductByName(supplier.id, selectedProduct);
-            return (
-              <Card key={supplier.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-sm">
-                      {supplier.business_name || supplier.name}
-                    </h4>
-                    <Badge variant="outline" className="text-xs">
-                      ₹{product?.price || 'N/A'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1 mb-2">
-                    {renderStars(supplier.averageRating || 0)}
-                    <span className="text-xs text-muted-foreground">
-                      ({supplier.totalReviews || 0})
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {supplier.city || 'Location not specified'}
+        {/* Detailed Comparison Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Detailed Comparison of Suppliers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Supplier 1 Details Card */}
+              <Card className="border border-blue-200">
+                <CardHeader>
+                  <CardTitle className="text-blue-600">{selectedSupplier1.business_name || selectedSupplier1.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-t pt-3">
+                    <h5 className="font-semibold mb-1">Supplier Details</h5>
+                    <ul className="list-disc ml-6 text-xs text-muted-foreground space-y-1 mb-4">
+                      <li>Business Name: {selectedSupplier1.business_name || 'N/A'}</li>
+                      <li>Contact: {selectedSupplier1.phone || 'N/A'}</li>
+                      <li>Email: {selectedSupplier1.email || 'N/A'}</li>
+                      <li>Address: {selectedSupplier1.address || 'N/A'}</li>
+                      <li>City: {selectedSupplier1.city || 'N/A'}</li>
+                      <li>State: {selectedSupplier1.state || 'N/A'}</li>
+                      <li>Total Products: {selectedSupplier1.productsCount || 'N/A'}</li>
+                      <li>Specialties: {(selectedSupplier1.specialties && selectedSupplier1.specialties.length > 0) ? selectedSupplier1.specialties.join(', ') : 'N/A'}</li>
+                      <li>Average Supplier Rating: {selectedSupplier1.averageRating?.toFixed(1) || 'N/A'} ({selectedSupplier1.totalReviews || 0} reviews)</li>
+                    </ul>
+                    <div className="mt-4">
+                      <h5 className="font-semibold mb-1">Available Products</h5>
+                      <ul className="list-disc ml-6 text-xs text-muted-foreground space-y-1">
+                        {(productsBySupplier[selectedSupplier1.id] && productsBySupplier[selectedSupplier1.id].length > 0) ? (
+                          productsBySupplier[selectedSupplier1.id].map((product: any) => (
+                            <li key={product.id}>{product.name} (₹{product.price})</li>
+                          ))
+                        ) : (
+                          <li>No products available</li>
+                        )}
+                      </ul>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+              {/* Supplier 2 Details Card */}
+              <Card className="border border-green-200">
+                <CardHeader>
+                  <CardTitle className="text-green-600">{selectedSupplier2.business_name || selectedSupplier2.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-t pt-3">
+                    <h5 className="font-semibold mb-1">Supplier Details</h5>
+                    <ul className="list-disc ml-6 text-xs text-muted-foreground space-y-1 mb-4">
+                      <li>Business Name: {selectedSupplier2.business_name || 'N/A'}</li>
+                      <li>Contact: {selectedSupplier2.phone || 'N/A'}</li>
+                      <li>Email: {selectedSupplier2.email || 'N/A'}</li>
+                      <li>Address: {selectedSupplier2.address || 'N/A'}</li>
+                      <li>City: {selectedSupplier2.city || 'N/A'}</li>
+                      <li>State: {selectedSupplier2.state || 'N/A'}</li>
+                      <li>Total Products: {selectedSupplier2.productsCount || 'N/A'}</li>
+                      <li>Specialties: {(selectedSupplier2.specialties && selectedSupplier2.specialties.length > 0) ? selectedSupplier2.specialties.join(', ') : 'N/A'}</li>
+                      <li>Average Supplier Rating: {selectedSupplier2.averageRating?.toFixed(1) || 'N/A'} ({selectedSupplier2.totalReviews || 0} reviews)</li>
+                    </ul>
+                    <div className="mt-4">
+                      <h5 className="font-semibold mb-1">Available Products</h5>
+                      <ul className="list-disc ml-6 text-xs text-muted-foreground space-y-1">
+                        {(productsBySupplier[selectedSupplier2.id] && productsBySupplier[selectedSupplier2.id].length > 0) ? (
+                          productsBySupplier[selectedSupplier2.id].map((product: any) => (
+                            <li key={product.id}>{product.name} (₹{product.price})</li>
+                          ))
+                        ) : (
+                          <li>No products available</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };
@@ -465,7 +532,6 @@ const CompareSuppliers = () => {
 
             {/* Comparison Results */}
             {renderProductComparison()}
-            {renderSupplierProducts()}
 
             {/* Initial State */}
             {!selectedProduct && (
