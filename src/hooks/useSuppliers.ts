@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
@@ -15,7 +15,7 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -116,9 +116,9 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationFilter, radiusFilter]);
 
-  const getRecentSuppliers = async () => {
+  const getRecentSuppliers = useCallback(async () => {
     if (!vendorId) return [];
     
     try {
@@ -158,11 +158,11 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
       console.error('Error fetching recent suppliers:', err);
       return [];
     }
-  };
+  }, [vendorId, suppliers]);
 
   useEffect(() => {
     fetchSuppliers();
-  }, [locationFilter, radiusFilter]);
+  }, [fetchSuppliers]);
 
   // Listen for account updates to refresh supplier data
   useEffect(() => {
@@ -183,7 +183,7 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
       window.removeEventListener('accountUpdated', handleAccountUpdate as EventListener);
       window.removeEventListener('supplierUpdated', handleSupplierUpdate as EventListener);
     };
-  }, []);
+  }, [fetchSuppliers]);
 
   return {
     suppliers,

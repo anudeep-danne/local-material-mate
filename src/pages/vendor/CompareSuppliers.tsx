@@ -5,15 +5,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Star, Package, Clock, MapPin, AlertCircle, Search } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useProductComparison } from "@/hooks/useProductComparison";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const CompareSuppliers = () => {
   // Get authenticated user ID
   const { user } = useAuth();
-  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
+  const vendorId = user?.id;
   const { suppliers, loading, error, getRecentSuppliers } = useSuppliers(vendorId);
   const [recentSuppliers, setRecentSuppliers] = useState<any[]>([]);
   const [showRecentOnly, setShowRecentOnly] = useState(false);
@@ -36,17 +37,17 @@ const CompareSuppliers = () => {
   const selectedProduct2 = selectedProduct ? getProductByName(supplier2, selectedProduct) : null;
 
   // Get suppliers that have the selected product
-  const getSuppliersWithProduct = (productName: string) => {
+  const getSuppliersWithProduct = useCallback((productName: string) => {
     return suppliers.filter(supplier => {
       const supplierProducts = productsBySupplier[supplier.id] || [];
       return supplierProducts.some(product => product.name === productName);
     });
-  };
+  }, [suppliers, productsBySupplier]);
 
   const suppliersWithSelectedProduct = selectedProduct ? getSuppliersWithProduct(selectedProduct) : [];
 
   // Filter products based on search
-  const getFilteredProducts = () => {
+  const getFilteredProducts = useCallback(() => {
     if (!productSearch.trim()) {
       // Show top products (most popular by supplier count) when no search
       return availableProducts
@@ -63,17 +64,29 @@ const CompareSuppliers = () => {
     return availableProducts.filter(productName =>
       productName.toLowerCase().includes(productSearch.toLowerCase())
     );
-  };
+  }, [productSearch, availableProducts, getSuppliersWithProduct]);
 
   const filteredProducts = getFilteredProducts();
 
-  useEffect(() => {
-    const fetchRecentSuppliers = async () => {
+  // Memoize the fetch recent suppliers function
+  const fetchRecentSuppliers = useCallback(async () => {
+    if (!vendorId) {
+      setRecentSuppliers([]);
+      return;
+    }
+    
+    try {
       const recent = await getRecentSuppliers();
       setRecentSuppliers(recent);
-    };
+    } catch (error) {
+      console.error('Error fetching recent suppliers:', error);
+      setRecentSuppliers([]);
+    }
+  }, [vendorId, getRecentSuppliers]);
+
+  useEffect(() => {
     fetchRecentSuppliers();
-  }, [getRecentSuppliers]);
+  }, [fetchRecentSuppliers]);
 
   const availableSuppliers = showRecentOnly ? recentSuppliers : suppliers;
 
@@ -98,159 +111,179 @@ const CompareSuppliers = () => {
         <h3 className="text-lg font-semibold mb-4">Product Price Comparison</h3>
         <div className="grid md:grid-cols-2 gap-6">
           {/* Supplier 1 Product */}
-          <Card className="border-vendor-primary/30">
-            <CardHeader className="bg-vendor-secondary/30">
-              <CardTitle className="text-vendor-primary text-base">{selectedSupplier1.name}</CardTitle>
+          <Card className="border-2 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-blue-600">
+                {selectedSupplier1.business_name || selectedSupplier1.name}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent>
               {selectedProduct1 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{selectedProduct1.name}</span>
+                    <span className="font-semibold">{selectedProduct1.name}</span>
                     <Badge variant="secondary">{selectedProduct1.category}</Badge>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Price per kg</span>
-                    <span className="text-lg font-bold text-vendor-primary">₹{selectedProduct1.price}</span>
+                  <div className="text-2xl font-bold text-green-600">
+                    ₹{selectedProduct1.price}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Stock Available</span>
-                    <span className="font-semibold">{selectedProduct1.stock} kg</span>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Package className="h-4 w-4" />
+                    <span>Stock: {selectedProduct1.stock} units</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{selectedSupplier1.city || 'Location not specified'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {renderStars(selectedSupplier1.averageRating || 0)}
+                    <span className="text-sm text-muted-foreground ml-2">
+                      ({selectedSupplier1.totalReviews || 0} reviews)
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Product not available</span>
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                  <p className="text-red-600 font-semibold">Product not available</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    This supplier doesn't carry {selectedProduct}
+                  </p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Supplier 2 Product */}
-          <Card className="border-supplier-primary/30">
-            <CardHeader className="bg-supplier-secondary/30">
-              <CardTitle className="text-supplier-primary text-base">{selectedSupplier2.name}</CardTitle>
+          <Card className="border-2 border-green-200">
+            <CardHeader>
+              <CardTitle className="text-green-600">
+                {selectedSupplier2.business_name || selectedSupplier2.name}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent>
               {selectedProduct2 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{selectedProduct2.name}</span>
+                    <span className="font-semibold">{selectedProduct2.name}</span>
                     <Badge variant="secondary">{selectedProduct2.category}</Badge>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Price per kg</span>
-                    <span className="text-lg font-bold text-supplier-primary">₹{selectedProduct2.price}</span>
+                  <div className="text-2xl font-bold text-green-600">
+                    ₹{selectedProduct2.price}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Stock Available</span>
-                    <span className="font-semibold">{selectedProduct2.stock} kg</span>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Package className="h-4 w-4" />
+                    <span>Stock: {selectedProduct2.stock} units</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{selectedSupplier2.city || 'Location not specified'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {renderStars(selectedSupplier2.averageRating || 0)}
+                    <span className="text-sm text-muted-foreground ml-2">
+                      ({selectedSupplier2.totalReviews || 0} reviews)
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Product not available</span>
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                  <p className="text-red-600 font-semibold">Product not available</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    This supplier doesn't carry {selectedProduct}
+                  </p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Price Difference */}
+        {/* Price Analysis */}
         {selectedProduct1 && selectedProduct2 && (
-          <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-            <h4 className="font-semibold mb-2">Price Analysis</h4>
-            <div className="grid md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Price Difference:</span>
-                <span className={`ml-2 font-semibold ${selectedProduct1.price > selectedProduct2.price ? 'text-red-600' : 'text-green-600'}`}>
-                  ₹{Math.abs(selectedProduct1.price - selectedProduct2.price)}
-                </span>
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Price Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    ₹{selectedProduct1.price}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedSupplier1.business_name || selectedSupplier1.name}
+                  </div>
+                </div>
+                <div className="flex items-center justify-center">
+                  <div className="text-lg font-semibold text-muted-foreground">
+                    vs
+                  </div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-600">
+                    ₹{selectedProduct2.price}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedSupplier2.business_name || selectedSupplier2.name}
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-muted-foreground">Percentage Difference:</span>
-                <span className={`ml-2 font-semibold ${selectedProduct1.price > selectedProduct2.price ? 'text-red-600' : 'text-green-600'}`}>
-                  {Math.abs(((selectedProduct1.price - selectedProduct2.price) / selectedProduct2.price) * 100).toFixed(1)}%
-                </span>
+              <div className="mt-4 text-center">
+                {selectedProduct1.price < selectedProduct2.price ? (
+                  <div className="text-green-600 font-semibold">
+                    {selectedSupplier1.business_name || selectedSupplier1.name} offers better price
+                  </div>
+                ) : selectedProduct1.price > selectedProduct2.price ? (
+                  <div className="text-green-600 font-semibold">
+                    {selectedSupplier2.business_name || selectedSupplier2.name} offers better price
+                  </div>
+                ) : (
+                  <div className="text-blue-600 font-semibold">
+                    Both suppliers offer the same price
+                  </div>
+                )}
               </div>
-              <div>
-                <span className="text-muted-foreground">Better Deal:</span>
-                <span className="ml-2 font-semibold text-green-600">
-                  {selectedProduct1.price < selectedProduct2.price ? selectedSupplier1?.name : selectedSupplier2?.name}
-                </span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     );
   };
 
   const renderSupplierProducts = () => {
-    if (!selectedSupplier1 || !selectedSupplier2) return null;
-
-    const supplier1Products = productsBySupplier[supplier1] || [];
-    const supplier2Products = productsBySupplier[supplier2] || [];
+    if (!selectedProduct) return null;
 
     return (
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Available Products</h3>
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Supplier 1 Products */}
-          <Card className="border-vendor-primary/30">
-            <CardHeader className="bg-vendor-secondary/30">
-              <CardTitle className="text-vendor-primary text-base">{selectedSupplier1.name} Products</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              {supplier1Products.length > 0 ? (
-                <div className="space-y-2">
-                  {supplier1Products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
-                      <div>
-                        <span className="font-medium text-sm">{product.name}</span>
-                        <Badge variant="outline" className="ml-2 text-xs">{product.category}</Badge>
-                      </div>
-                      <span className="font-semibold text-sm">₹{product.price}/kg</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-4">
-                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <span>No products available</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Supplier 2 Products */}
-          <Card className="border-supplier-primary/30">
-            <CardHeader className="bg-supplier-secondary/30">
-              <CardTitle className="text-supplier-primary text-base">{selectedSupplier2.name} Products</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              {supplier2Products.length > 0 ? (
-                <div className="space-y-2">
-                  {supplier2Products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
-                      <div>
-                        <span className="font-medium text-sm">{product.name}</span>
-                        <Badge variant="outline" className="ml-2 text-xs">{product.category}</Badge>
-                      </div>
-                      <span className="font-semibold text-sm">₹{product.price}/kg</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-4">
-                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <span>No products available</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <h3 className="text-lg font-semibold mb-4">Available Products Overview</h3>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {suppliersWithSelectedProduct.map((supplier) => {
+            const product = getProductByName(supplier.id, selectedProduct);
+            return (
+              <Card key={supplier.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-sm">
+                      {supplier.business_name || supplier.name}
+                    </h4>
+                    <Badge variant="outline" className="text-xs">
+                      ₹{product?.price || 'N/A'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 mb-2">
+                    {renderStars(supplier.averageRating || 0)}
+                    <span className="text-xs text-muted-foreground">
+                      ({supplier.totalReviews || 0})
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {supplier.city || 'Location not specified'}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     );
@@ -289,8 +322,10 @@ const CompareSuppliers = () => {
               <h1 className="text-2xl font-semibold text-foreground">Compare Suppliers</h1>
             </header>
             <div className="p-6">
-              <div className="text-center py-12 text-destructive">
-                Error loading suppliers: {error}
+              <div className="text-center py-8">
+                <div className="text-lg text-destructive mb-4">Error loading suppliers</div>
+                <div className="text-sm text-muted-foreground mb-4">{error}</div>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
               </div>
             </div>
           </main>
@@ -312,270 +347,134 @@ const CompareSuppliers = () => {
           </header>
 
           {/* Content */}
-          <div className="p-6">
-            {/* Filter Options */}
-            <div className="mb-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showRecentOnly}
-                  onChange={(e) => setShowRecentOnly(e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-sm">Show only suppliers from recent orders</span>
-              </label>
-            </div>
-
-            {/* Product Selection - First Step */}
-            <div className="mb-8">
-              <label className="text-sm font-medium mb-2 block">Select Product to Compare</label>
-              <Select 
-                value={selectedProduct} 
-                onValueChange={setSelectedProduct}
-                open={isProductDropdownOpen}
-                onOpenChange={setIsProductDropdownOpen}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a product to compare prices across suppliers" />
-                </SelectTrigger>
-                <SelectContent className="w-[400px]">
-                  {/* Search Input */}
-                  <div className="p-2">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search products..."
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        className="pl-8"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') {
-                            setIsProductDropdownOpen(false);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Product List */}
-                  <div className="max-h-[300px] overflow-y-auto">
-                    {filteredProducts.length > 0 ? (
-                      filteredProducts.map((productName) => {
-                        const suppliersWithProduct = getSuppliersWithProduct(productName);
-                        return (
-                          <SelectItem key={productName} value={productName}>
-                            <div className="flex items-center justify-between w-full">
-                              <span>{productName}</span>
-                              <Badge variant="secondary" className="ml-2 text-xs">
-                                {suppliersWithProduct.length} supplier{suppliersWithProduct.length !== 1 ? 's' : ''}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        );
-                      })
-                    ) : (
-                      <div className="p-4 text-center text-muted-foreground">
-                        {productSearch.trim() ? 'No products found matching your search.' : 'No products available.'}
+          <div className="p-6 space-y-8">
+            {/* Product Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-vendor-primary">Product Selection with Search</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Product to Compare</label>
+                  <Select 
+                    value={selectedProduct} 
+                    onValueChange={setSelectedProduct}
+                    onOpenChange={setIsProductDropdownOpen}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a product to compare prices" />
+                    </SelectTrigger>
+                    <SelectContent className="w-[400px] max-h-[300px] overflow-y-auto">
+                      <div className="p-2">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search products..."
+                            value={productSearch}
+                            onChange={(e) => setProductSearch(e.target.value)}
+                            className="pl-8"
+                          />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  {/* Show all products option when searching */}
-                  {productSearch.trim() && (
-                    <div className="border-t p-2">
-                      <button
-                        onClick={() => {
-                          setProductSearch('');
-                          setIsProductDropdownOpen(false);
-                        }}
-                        className="w-full text-left text-sm text-muted-foreground hover:text-foreground p-2 rounded hover:bg-muted"
-                      >
-                        Clear search and show all products
-                      </button>
-                    </div>
+                      <div className="max-h-[200px] overflow-y-auto">
+                        {filteredProducts.map((productName) => {
+                          const supplierCount = getSuppliersWithProduct(productName).length;
+                          return (
+                            <SelectItem key={productName} value={productName}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>{productName}</span>
+                                <Badge variant="secondary" className="ml-2">
+                                  {supplierCount} supplier{supplierCount !== 1 ? 's' : ''}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </div>
+                      {productSearch.trim() && (
+                        <div className="p-2 border-t">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setProductSearch("")}
+                            className="w-full"
+                          >
+                            Clear search and show all products
+                          </Button>
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {!productSearch.trim() && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Showing top {Math.min(10, filteredProducts.length)} most popular products
+                    </p>
                   )}
-                </SelectContent>
-              </Select>
-              {productsLoading && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  Loading product data...
                 </div>
-              )}
-              {selectedProduct && suppliersWithSelectedProduct.length > 0 && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  💡 {suppliersWithSelectedProduct.length} supplier{suppliersWithSelectedProduct.length !== 1 ? 's' : ''} have this product
-                </div>
-              )}
-              {!productSearch.trim() && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  💡 Showing top {filteredProducts.length} most popular products. Use search to find specific products.
-                </div>
-              )}
-            </div>
 
-            {/* Supplier Selection - Second Step */}
-            {selectedProduct && (
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Select First Supplier</label>
-                  <Select value={supplier1} onValueChange={setSupplier1}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose first supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliersWithSelectedProduct.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{supplier.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              ₹{getProductByName(supplier.id, selectedProduct)?.price || 0}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Select Second Supplier</label>
-                  <Select value={supplier2} onValueChange={setSupplier2}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose second supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliersWithSelectedProduct.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{supplier.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              ₹{getProductByName(supplier.id, selectedProduct)?.price || 0}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            {/* Product Price Comparison */}
-            {renderProductComparison()}
-
-            {/* Available Products */}
-            {renderSupplierProducts()}
-
-            {/* Supplier Comparison */}
-            {selectedSupplier1 && selectedSupplier2 ? (
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Supplier 1 */}
-                <Card className="border-vendor-primary/30">
-                  <CardHeader className="bg-vendor-secondary/30">
-                    <CardTitle className="text-vendor-primary">{selectedSupplier1.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="flex items-center gap-2">
-                      <div className="flex">{renderStars(selectedSupplier1.averageRating)}</div>
-                      <span className="text-sm font-semibold">{selectedSupplier1.averageRating.toFixed(1)}</span>
-                      <span className="text-xs text-muted-foreground">({selectedSupplier1.totalReviews} reviews)</span>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Products</span>
-                        </div>
-                        <span className="font-semibold">{selectedSupplier1.productsCount}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">Average Price</span>
-                        </div>
-                        <span className="font-semibold">₹{selectedSupplier1.averagePrice.toFixed(0)}/kg</span>
-                      </div>
-
+                {/* Supplier Selection */}
+                {selectedProduct && (
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Select First Supplier</label>
+                      <Select value={supplier1} onValueChange={setSupplier1}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose first supplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliersWithSelectedProduct.map((supplier) => (
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{supplier.business_name || supplier.name}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  ₹{getProductByName(supplier.id, selectedProduct)?.price || 'N/A'} • {supplier.city || 'N/A'}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
-                      <h4 className="font-semibold mb-2">Specialties</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedSupplier1.specialties?.map((specialty) => (
-                          <Badge key={specialty} variant="secondary">
-                            {specialty}
-                          </Badge>
-                        ))}
-                        {(!selectedSupplier1.specialties || selectedSupplier1.specialties.length === 0) && (
-                          <span className="text-sm text-muted-foreground">No specialties listed</span>
-                        )}
-                      </div>
+                      <label className="text-sm font-medium mb-2 block">Select Second Supplier</label>
+                      <Select value={supplier2} onValueChange={setSupplier2}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose second supplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliersWithSelectedProduct
+                            .filter(s => s.id !== supplier1)
+                            .map((supplier) => (
+                              <SelectItem key={supplier.id} value={supplier.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{supplier.business_name || supplier.name}</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    ₹{getProductByName(supplier.id, selectedProduct)?.price || 'N/A'} • {supplier.city || 'N/A'}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-
-                  </CardContent>
-                </Card>
-
-                {/* Supplier 2 */}
-                <Card className="border-supplier-primary/30">
-                  <CardHeader className="bg-supplier-secondary/30">
-                    <CardTitle className="text-supplier-primary">{selectedSupplier2.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="flex items-center gap-2">
-                      <div className="flex">{renderStars(selectedSupplier2.averageRating)}</div>
-                      <span className="text-sm font-semibold">{selectedSupplier2.averageRating.toFixed(1)}</span>
-                      <span className="text-xs text-muted-foreground">({selectedSupplier2.totalReviews} reviews)</span>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Products</span>
-                        </div>
-                        <span className="font-semibold">{selectedSupplier2.productsCount}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">Average Price</span>
-                        </div>
-                        <span className="font-semibold">₹{selectedSupplier2.averagePrice.toFixed(0)}/kg</span>
-                      </div>
-
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold mb-2">Specialties</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedSupplier2.specialties?.map((specialty) => (
-                          <Badge key={specialty} variant="secondary">
-                            {specialty}
-                          </Badge>
-                        ))}
-                        {(!selectedSupplier2.specialties || selectedSupplier2.specialties.length === 0) && (
-                          <span className="text-sm text-muted-foreground">No specialties listed</span>
-                        )}
-                      </div>
-                    </div>
-
-                  </CardContent>
-                </Card>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-muted-foreground mb-4">
-                  {selectedProduct 
-                    ? "Select two suppliers to compare their offerings, ratings, and delivery options."
-                    : "Select a product first to compare prices across suppliers."
-                  }
-                </div>
-                {availableSuppliers.length === 0 && (
-                  <div className="text-sm text-muted-foreground">
-                    {showRecentOnly ? "No recent suppliers found. Try unchecking the filter to see all suppliers." : "No suppliers available."}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Comparison Results */}
+            {renderProductComparison()}
+            {renderSupplierProducts()}
+
+            {/* Initial State */}
+            {!selectedProduct && (
+              <div className="text-center py-12">
+                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Select a Product to Compare</h3>
+                <p className="text-muted-foreground">
+                  Choose a product from the dropdown above to start comparing prices between suppliers.
+                </p>
               </div>
             )}
           </div>

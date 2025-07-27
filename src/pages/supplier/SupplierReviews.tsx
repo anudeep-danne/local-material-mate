@@ -2,43 +2,213 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "@/components/SupplierSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Star, User, Package } from "lucide-react";
-import { useReviews } from "@/hooks/useReviews";
+import { Star, Package, TrendingUp, AlertCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const SupplierReviews = () => {
   const { user } = useAuth();
   const supplierId = user?.id;
-  const { reviews, loading, error, refetch } = useReviews(supplierId || "", 'supplier');
-
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
-    : 0;
-  const totalReviews = reviews.length;
   
-  const ratingCounts = reviews.reduce((acc, review) => {
-    acc[review.rating] = (acc[review.rating] || 0) + 1;
-    return acc;
-  }, {} as Record<number, number>);
+  const [supplierRating, setSupplierRating] = useState<{
+    supplierId: string;
+    supplierName: string;
+    averageRating: number;
+    totalProducts: number;
+    totalReviews: number;
+  } | null>(null);
+  const [loadingRating, setLoadingRating] = useState(true);
+  const [productReviews, setProductReviews] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Memoize the fetch data function to prevent infinite re-renders
+  const fetchData = useCallback(async () => {
+    if (!supplierId) {
+      setLoadingRating(false);
+      return;
+    }
+    
+    try {
+      setLoadingRating(true);
+      setError(null);
+      
+      console.log('Starting to fetch supplier reviews data...');
+      
+      // Import supabase client
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      // Step 1: Get all reviews for this supplier (simple query first)
+      console.log('Fetching all reviews for supplier:', supplierId);
+      const { data: allReviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('supplier_id', supplierId)
+        .order('created_at', { ascending: false });
+
+      if (reviewsError) {
+        console.error('Error fetching reviews:', reviewsError);
+        throw new Error(`Failed to fetch reviews: ${reviewsError.message}`);
+      }
+
+      console.log(`Found ${allReviews?.length || 0} reviews for supplier ${supplierId}`);
+      
+      // Step 2: Calculate supplier rating from all reviews
+      let averageRating = 0;
+      let totalReviews = 0;
+      
+      if (allReviews && allReviews.length > 0) {
+        const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+        averageRating = totalRating / allReviews.length;
+        totalReviews = allReviews.length;
+      }
+      
+      // Step 3: Get products for this supplier (for product count)
+      console.log('Fetching products for supplier:', supplierId);
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('supplier_id', supplierId);
+
+      if (productsError) {
+        console.error('Error fetching products:', productsError);
+        // Don't throw error, just log it and continue
+      }
+
+      console.log(`Found ${products?.length || 0} products for supplier ${supplierId}`);
+      
+      // Step 4: Set supplier rating
+      setSupplierRating({
+        supplierId,
+        supplierName: 'Supplier',
+        averageRating,
+        totalProducts: products?.length || 0,
+        totalReviews
+      });
+      
+      // Step 5: Transform reviews with vendor names and product information
+      console.log('Transforming reviews...');
+      const transformedReviews: any[] = [];
+      
+      if (allReviews && allReviews.length > 0) {
+        for (const review of allReviews) {
+          try {
+            // Get vendor name
+            const { data: vendorData, error: vendorError } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', review.vendor_id)
+              .single();
+
+            if (vendorError) {
+              console.error('Error fetching vendor data:', vendorError);
+            }
+
+            // Get order and product information
+            const { data: orderData, error: orderError } = await supabase
+              .from('orders')
+              .select(`
+                id,
+                product_id,
+                product:products!orders_product_id_fkey(
+                  id,
+                  name
+                )
+              `)
+              .eq('id', review.order_id)
+              .single();
+
+            if (orderError) {
+              console.error('Error fetching order data:', orderError);
+            }
+
+            // Determine product name
+            let productName = 'Product (No longer available)';
+            let productId = null;
+            
+            if (orderData?.product?.name) {
+              productName = orderData.product.name;
+              productId = orderData.product_id;
+            } else if (products && products.length > 0) {
+              // Try to find the product in the current products list
+              const matchingProduct = products.find(p => p.id === orderData?.product_id);
+              if (matchingProduct) {
+                productName = matchingProduct.name;
+                productId = matchingProduct.id;
+              }
+            }
+
+            const transformedReview = {
+              id: review.id,
+              rating: review.rating,
+              comment: review.comment,
+              created_at: review.created_at,
+              vendor_id: review.vendor_id,
+              vendor_name: vendorData?.name || 'Unknown Vendor',
+              supplier_name: 'Supplier',
+              product_name: productName,
+              product_id: productId,
+              order_id: review.order_id
+            };
+            
+            console.log(`Transformed review: ${transformedReview.id} for product ${transformedReview.product_name} by ${transformedReview.vendor_name}`);
+            transformedReviews.push(transformedReview);
+          } catch (error) {
+            console.error('Error transforming review:', error);
+            // Skip this review if there's an error, but continue with others
+          }
+        }
+      }
+      
+      console.log(`Total reviews after transformation: ${transformedReviews.length}`);
+      
+      // Step 6: Remove duplicates based on review ID
+      const uniqueReviews = transformedReviews.filter((review, index, self) => 
+        index === self.findIndex(r => r.id === review.id)
+      );
+      
+      console.log(`Total unique reviews: ${uniqueReviews.length}`);
+      console.log('Final unique reviews:', uniqueReviews.map(r => ({ id: r.id, product: r.product_name, vendor: r.vendor_name })));
+      
+      setProductReviews(uniqueReviews);
+      
+    } catch (error) {
+      console.error('Error fetching supplier data:', error);
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      
+      // Set default values on error
+      setSupplierRating({
+        supplierId,
+        supplierName: 'Supplier',
+        averageRating: 0,
+        totalProducts: 0,
+        totalReviews: 0
+      });
+      setProductReviews([]);
+    } finally {
+      setLoadingRating(false);
+    }
+  }, [supplierId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const renderStars = (rating: number) => {
-    return [...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 ${
-          i < rating
-            ? "text-yellow-400 fill-current"
-            : "text-gray-300"
-        }`}
-      />
-    ));
-  };
-
-  const getRatingColor = (rating: number) => {
-    if (rating >= 4) return "text-success";
-    if (rating >= 3) return "text-warning";
-    return "text-destructive";
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    
+    return [...Array(5)].map((_, i) => {
+      let starClass = "text-gray-300";
+      if (i < fullStars) {
+        starClass = "text-yellow-400 fill-current";
+      } else if (i === fullStars && hasHalfStar) {
+        starClass = "text-yellow-400 fill-current";
+      }
+      
+      return (
+        <Star key={i} className={`h-4 w-4 ${starClass}`} />
+      );
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -49,185 +219,232 @@ const SupplierReviews = () => {
     });
   };
 
-  const getRecentReviewsCount = () => {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    return reviews.filter(review => new Date(review.created_at) > oneWeekAgo).length;
+  const getRatingColor = (rating: number) => {
+    if (rating >= 4.5) return "text-green-600";
+    if (rating >= 4.0) return "text-blue-600";
+    if (rating >= 3.5) return "text-yellow-600";
+    if (rating >= 3.0) return "text-orange-600";
+    return "text-red-600";
   };
 
-  if (loading) {
+  // Calculate rating distribution
+  const getRatingDistribution = () => {
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    productReviews.forEach(review => {
+      if (review.rating >= 1 && review.rating <= 5) {
+        distribution[review.rating as keyof typeof distribution]++;
+      }
+    });
+    return distribution;
+  };
+
+  const ratingDistribution = getRatingDistribution();
+
+  if (loadingRating) {
     return (
-      <>
-        {/* Header */}
-        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-          <SidebarTrigger className="mr-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
-        </header>
-        <div className="p-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full"></div>
-            <span className="ml-3 text-muted-foreground">Loading reviews...</span>
-          </div>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <SupplierSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-12">
+                <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Loading reviews...</p>
+              </div>
+            </div>
+          </main>
         </div>
-      </>
+      </SidebarProvider>
     );
   }
 
   if (error) {
     return (
-      <>
-        {/* Header */}
-        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-          <SidebarTrigger className="mr-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
-        </header>
-        <div className="p-6">
-          <div className="text-center py-8">
-            <div className="text-lg text-destructive mb-4">Error loading reviews</div>
-            <div className="text-sm text-muted-foreground mb-4">{error}</div>
-            <Button onClick={refetch}>Retry</Button>
-          </div>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <SupplierSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2 text-red-600">Error Loading Reviews</h3>
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <button 
+                  onClick={fetchData}
+                  className="px-4 py-2 bg-supplier-primary text-white rounded-md hover:bg-supplier-primary/90"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </main>
         </div>
-      </>
+      </SidebarProvider>
     );
   }
 
   return (
-    <>
-      {/* Header */}
-      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <SupplierSidebar />
+        
+        <main className="flex-1 bg-background">
+          {/* Header */}
+          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
             <SidebarTrigger className="mr-4" />
             <h1 className="text-2xl font-semibold text-foreground">Reviews & Ratings</h1>
           </header>
 
           {/* Content */}
           <div className="p-6 space-y-8">
-            {/* Rating Summary */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card className="border-supplier-primary/20">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-supplier-primary">Overall Rating</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <div className="text-4xl font-bold text-supplier-primary mb-2">
-                    {averageRating.toFixed(1)}
+            {/* Overall Rating Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-supplier-primary">Your Overall Rating</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {supplierRating ? (
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-supplier-primary">
+                        {supplierRating.averageRating.toFixed(1)}
+                      </div>
+                      <div className="flex justify-center mt-2">
+                        {renderStars(supplierRating.averageRating)}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {supplierRating.totalReviews} review{supplierRating.totalReviews !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-3 bg-muted rounded-lg">
+                          <div className="text-2xl font-bold text-supplier-primary">
+                            {supplierRating.totalProducts}
+                          </div>
+                          <p className="text-sm text-muted-foreground">Products</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted rounded-lg">
+                          <div className="text-2xl font-bold text-supplier-primary">
+                            {supplierRating.totalReviews}
+                          </div>
+                          <p className="text-sm text-muted-foreground">Reviews</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-center mb-2">
-                    {renderStars(Math.round(averageRating))}
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No ratings yet</h3>
+                    <p className="text-muted-foreground">
+                      Start selling products to receive reviews from vendors.
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Based on {totalReviews} reviews
-                  </p>
-                </CardContent>
-              </Card>
+                )}
+              </CardContent>
+            </Card>
 
-              <Card className="border-supplier-primary/20">
+            {/* Rating Distribution */}
+            {supplierRating && supplierRating.totalReviews > 0 && (
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-supplier-primary">Rating Breakdown</CardTitle>
+                  <CardTitle>Rating Distribution</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {[5, 4, 3, 2, 1].map((rating) => (
-                      <div key={rating} className="flex items-center gap-2">
-                        <span className="text-sm w-3">{rating}</span>
-                        <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-supplier-primary h-2 rounded-full transition-all duration-500"
-                            style={{ 
-                              width: `${totalReviews > 0 ? ((ratingCounts[rating] || 0) / totalReviews) * 100 : 0}%` 
-                            }}
-                          />
+                  <div className="space-y-3">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = ratingDistribution[star as keyof typeof ratingDistribution];
+                      const percentage = supplierRating.totalReviews > 0 
+                        ? (count / supplierRating.totalReviews) * 100 
+                        : 0;
+                      
+                      return (
+                        <div key={star} className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 w-16">
+                            <span className="text-sm font-medium">{star}</span>
+                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                          </div>
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-muted-foreground w-12 text-right">
+                            {count}
+                          </span>
                         </div>
-                        <span className="text-xs text-muted-foreground w-6 text-right">
-                          {ratingCounts[rating] || 0}
-                        </span>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Product Reviews */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-supplier-primary">Product Reviews</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {productReviews.length > 0 ? (
+                  <div className="space-y-6">
+                    {productReviews.map((review) => (
+                      <div key={review.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-medium">{review.product_name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Reviewed by {review.vendor_name}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {renderStars(review.rating)}
+                            <span className={`text-sm font-medium ml-1 ${getRatingColor(review.rating)}`}>
+                              ({review.rating}/5)
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {review.comment && (
+                          <p className="text-sm text-muted-foreground mb-3">
+                            "{review.comment}"
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Order #{review.order_id?.slice(0, 8) || 'Unknown'}</span>
+                          <span>{formatDate(review.created_at)}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-supplier-primary/20">
-                <CardHeader>
-                  <CardTitle className="text-supplier-primary">Quick Stats</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm">5-star reviews</span>
-                    <span className="font-semibold">
-                      {totalReviews > 0 ? ((ratingCounts[5] || 0) / totalReviews * 100).toFixed(0) : 0}%
-                    </span>
+                ) : (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No product reviews yet</h3>
+                    <p className="text-muted-foreground">
+                      Vendors will be able to review your products after placing orders.
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">4+ star reviews</span>
-                    <span className="font-semibold">
-                      {totalReviews > 0 ? (((ratingCounts[5] || 0) + (ratingCounts[4] || 0)) / totalReviews * 100).toFixed(0) : 0}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Recent reviews</span>
-                    <span className="font-semibold">{getRecentReviewsCount()} this week</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Individual Reviews */}
-            <div>
-              <h2 className="text-xl font-semibold mb-6">Customer Reviews</h2>
-              <div className="space-y-4">
-                {reviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-supplier-secondary rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-supplier-primary" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{review.vendor.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Order #{review.order.id.slice(0, 8)} • {formatDate(review.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 mb-1">
-                            {renderStars(review.rating)}
-                            <span className={`ml-2 text-sm font-semibold ${getRatingColor(review.rating)}`}>
-                              {review.rating}/5
-                            </span>
-                          </div>
-                          <Badge variant="secondary" className="text-xs">
-                            <Package className="mr-1 h-3 w-3" />
-                            {review.order.product?.name || 'Product'}
-                          </Badge>
-                        </div>
-                      </div>
-                      {review.comment && (
-                      <p className="text-muted-foreground leading-relaxed">
-                        {review.comment}
-                      </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {reviews.length === 0 && (
-                <div className="text-center py-12">
-                  <Star className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No reviews yet</h3>
-                  <p className="text-muted-foreground">
-                    Reviews from vendors will appear here after they receive and rate your products.
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </>
-      );
+        </main>
+      </div>
+    </SidebarProvider>
+  );
 };
 
 export default SupplierReviews;

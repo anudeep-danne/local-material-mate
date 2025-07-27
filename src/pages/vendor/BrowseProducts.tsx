@@ -6,27 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Search, Plus, Minus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { useCartContext } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useProductReviews } from "@/hooks/useProductReviews";
 
 const BrowseProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
   const [quantityStates, setQuantityStates] = useState<Record<string, number>>({});
+  const [productRatings, setProductRatings] = useState<Record<string, { averageRating: number; totalReviews: number }>>({});
 
   // Get authenticated user ID
   const { user } = useAuth();
-  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
-  
-  // Debug: Log vendor ID and user info
-  console.log('🛒 BrowseProducts: User info:', user);
-  console.log('🛒 BrowseProducts: Vendor ID being used:', vendorId);
-  console.log('🛒 BrowseProducts: User authenticated:', !!user);
-  console.log('🛒 BrowseProducts: User ID:', user?.id);
-  console.log('🛒 BrowseProducts: User role:', user?.role);
+  const vendorId = user?.id;
   
   const filters = {
     category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -36,9 +31,39 @@ const BrowseProducts = () => {
 
   const { products, loading, error } = useProducts(filters);
   const { cartItems, addToCart, updateQuantity, removeFromCart } = useCartContext();
+  const { getProductRating } = useProductReviews();
   
-  // Debug: Log cart items when they change
-  console.log('🛒 BrowseProducts: Current cart items:', cartItems);
+  // Fetch product ratings
+  useEffect(() => {
+    const fetchProductRatings = async () => {
+      const ratings: Record<string, { averageRating: number; totalReviews: number }> = {};
+      
+      for (const product of products) {
+        try {
+          console.log(`Fetching rating for product: ${product.name} (ID: ${product.id}) from supplier: ${product.supplier_id}`);
+          const rating = await getProductRating(product.id, product.supplier_id);
+          if (rating) {
+            console.log(`Product ${product.name} rating: ${rating.averageRating} (${rating.totalReviews} reviews)`);
+            ratings[product.id] = {
+              averageRating: rating.averageRating,
+              totalReviews: rating.totalReviews
+            };
+          } else {
+            console.log(`No rating found for product: ${product.name}`);
+          }
+        } catch (error) {
+          console.error(`Error fetching rating for product ${product.id}:`, error);
+        }
+      }
+      
+      console.log('Final product ratings:', ratings);
+      setProductRatings(ratings);
+    };
+
+    if (products.length > 0) {
+      fetchProductRatings();
+    }
+  }, [products, getProductRating]);
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,56 +89,110 @@ const BrowseProducts = () => {
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
     
-    console.log('🛒 BrowseProducts: Handling quantity change - Product ID:', productId, 'New quantity:', newQuantity);
-    console.log('🛒 BrowseProducts: Current cart items:', cartItems.map(item => ({ id: item.id, product_id: item.product_id, quantity: item.quantity })));
-    
     // Update local state immediately for better UX
     setQuantityStates(prev => ({ ...prev, [productId]: newQuantity }));
     
     const cartItem = cartItems.find(item => item.product_id === productId);
-    console.log('🛒 BrowseProducts: Found cart item:', cartItem);
     
     if (cartItem && cartItem.id) {
-      console.log('🛒 BrowseProducts: Updating existing cart item:', cartItem.id, 'Current quantity:', cartItem.quantity, 'New quantity:', newQuantity);
       try {
         await updateQuantity(cartItem.id, newQuantity);
-        console.log('🛒 BrowseProducts: Successfully updated cart item quantity');
       } catch (error) {
-        console.error('🛒 BrowseProducts: Error updating cart item quantity:', error);
+        console.error('Error updating cart item quantity:', error);
         
         // If update fails, try to remove the item and add it again
-        console.log('🛒 BrowseProducts: Trying remove and re-add approach');
         try {
           // Remove the existing item
           await removeFromCart(cartItem.id);
-          console.log('🛒 BrowseProducts: Removed existing cart item');
           
           // Add the item with new quantity
           await addToCart(productId, newQuantity);
-          console.log('🛒 BrowseProducts: Successfully re-added item with new quantity');
         } catch (fallbackError) {
-          console.error('🛒 BrowseProducts: Remove and re-add approach failed:', fallbackError);
+          console.error('Remove and re-add approach failed:', fallbackError);
           // Revert local state on complete failure
           setQuantityStates(prev => ({ ...prev, [productId]: cartItem.quantity }));
         }
       }
     } else {
-      console.log('🛒 BrowseProducts: Adding new item to cart');
+      // Add new item to cart
       try {
         await addToCart(productId, newQuantity);
-        console.log('🛒 BrowseProducts: Successfully added new item to cart');
       } catch (error) {
-        console.error('🛒 BrowseProducts: Error adding new item to cart:', error);
+        console.error('Error adding item to cart:', error);
         // Revert local state on failure
         setQuantityStates(prev => ({ ...prev, [productId]: 1 }));
       }
     }
   };
 
-  // Show quantity counter for a product
   const showQuantityCounter = (productId: string) => {
-    return getCurrentQuantity(productId) > 0 || quantityStates[productId] !== undefined;
+    const currentQuantity = getCurrentQuantity(productId);
+    return currentQuantity > 0;
   };
+
+  const renderStars = (rating: number) => {
+    return [...Array(5)].map((_, i) => (
+      <Star
+        key={i}
+        className={`h-4 w-4 ${
+          i < Math.floor(rating)
+            ? "text-yellow-400 fill-current"
+            : "text-gray-300"
+        }`}
+      />
+    ));
+  };
+
+  const getRatingColor = (rating: number) => {
+    if (rating >= 4) return "text-green-600";
+    if (rating >= 3) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Browse Products</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-12">
+                <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Loading products...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <VendorSidebar />
+          <main className="flex-1 bg-background">
+            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="text-2xl font-semibold text-foreground">Browse Products</h1>
+            </header>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="text-lg text-destructive mb-4">Error loading products</div>
+                <div className="text-sm text-muted-foreground mb-4">{error}</div>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -128,34 +207,36 @@ const BrowseProducts = () => {
           </header>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-6 space-y-6">
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search products or suppliers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products or suppliers..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
               
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Categories" />
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Vegetables">Vegetables</SelectItem>
-                  <SelectItem value="Grains">Grains</SelectItem>
-                  <SelectItem value="Spices">Spices</SelectItem>
-                  <SelectItem value="Oils">Oils</SelectItem>
+                  <SelectItem value="vegetables">Vegetables</SelectItem>
+                  <SelectItem value="fruits">Fruits</SelectItem>
+                  <SelectItem value="grains">Grains</SelectItem>
+                  <SelectItem value="dairy">Dairy</SelectItem>
                 </SelectContent>
               </Select>
-
+              
               <Select value={priceRange} onValueChange={setPriceRange}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full md:w-48">
                   <SelectValue placeholder="Price Range" />
                 </SelectTrigger>
                 <SelectContent>
@@ -165,141 +246,114 @@ const BrowseProducts = () => {
                   <SelectItem value="100+">₹100+</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by Rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rating-high">Highest Rated</SelectItem>
-                  <SelectItem value="rating-low">Lowest Rated</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
-                </SelectContent>
-              </Select>
-
             </div>
 
-            {/* Results */}
-            <div className="mb-4">
-              <p className="text-muted-foreground">
-                Showing {filteredProducts.length} products
-              </p>
-            </div>
-
-            {/* Product Grid */}
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...Array(8)].map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <div className="aspect-square bg-muted"></div>
-                    <CardHeader className="pb-2">
-                      <div className="h-5 bg-muted rounded w-3/4"></div>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
-                      <div className="h-10 bg-muted rounded"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-center py-8 text-destructive">
-                Error loading products: {error}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="aspect-square overflow-hidden">
-                      <img
-                        src={product.image_url || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=300'}
-                        alt={product.name}
-                        className="object-cover w-full h-full hover:scale-105 transition-transform duration-200"
-                      />
-                    </div>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{product.name}</CardTitle>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-foreground">
-                          {product.supplier.business_name || product.supplier.name || "Supplier Name Not Set"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          📍 {product.supplier.city || 'Location Not Set'}{product.supplier.state ? `, ${product.supplier.state}` : ''}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          📞 {product.supplier.phone || 'Phone Not Set'}
-                        </p>
+            {/* Products Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map((product) => {
+                const currentQuantity = getCurrentQuantity(product.id);
+                const quantityState = getQuantityState(product.id);
+                const productRating = productRatings[product.id];
+                
+                return (
+                  <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="aspect-square bg-muted rounded-lg mb-3 flex items-center justify-center">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="text-muted-foreground text-center">
+                            <div className="text-4xl mb-2">🥬</div>
+                            <div className="text-sm">No Image</div>
+                          </div>
+                        )}
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold text-vendor-primary">
-                          ₹{product.price}
-                        </span>
-                        <Badge variant="secondary">
-                          Stock: {product.stock}
-                        </Badge>
-                      </div>
-
-                      {showQuantityCounter(product.id) ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuantityChange(product.id, getQuantityState(product.id) - 1)}
-                            disabled={getQuantityState(product.id) <= 1}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="text-sm font-medium min-w-[2rem] text-center">
-                            {getQuantityState(product.id)}
+                      
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-lg line-clamp-2">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {product.supplier.business_name || product.supplier.name}
+                        </p>
+                        
+                        {/* Product Rating */}
+                        {productRating && productRating.totalReviews > 0 && (
+                          <div className="flex items-center gap-2">
+                            {renderStars(productRating.averageRating)}
+                            <span className={`text-sm font-semibold ${getRatingColor(productRating.averageRating)}`}>
+                              {productRating.averageRating.toFixed(1)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              ({productRating.totalReviews})
+                            </span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold text-vendor-primary">
+                            ₹{product.price}
                           </span>
+                          <Badge variant="secondary">{product.category}</Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="pt-0">
+                      {showQuantityCounter(product.id) ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQuantityChange(product.id, quantityState - 1)}
+                              disabled={quantityState <= 1}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="w-8 text-center font-semibold">{quantityState}</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQuantityChange(product.id, quantityState + 1)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
                           <Button
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
-                            onClick={() => handleQuantityChange(product.id, getQuantityState(product.id) + 1)}
-                            disabled={getQuantityState(product.id) >= product.stock}
+                            onClick={() => handleQuantityChange(product.id, 0)}
                           >
-                            <Plus className="h-3 w-3" />
+                            Remove
                           </Button>
                         </div>
                       ) : (
-                        <Button 
-                          variant="vendor" 
+                        <Button
+                          variant="vendor"
                           className="w-full"
-                          onClick={async () => {
-                            try {
-                              console.log('🛒 BrowseProducts: Add to cart button clicked for product:', product.id);
-                              console.log('🛒 BrowseProducts: Current vendor ID:', vendorId);
-                              console.log('🛒 BrowseProducts: Product details:', { id: product.id, name: product.name, price: product.price });
-                              setQuantityStates(prev => ({ ...prev, [product.id]: 1 }));
-                              console.log('🛒 BrowseProducts: Calling addToCart with:', { productId: product.id, quantity: 1, vendorId });
-                              await addToCart(product.id, 1);
-                              console.log('🛒 BrowseProducts: Successfully added product to cart:', product.id);
-                            } catch (error) {
-                              console.error('🛒 BrowseProducts: Error adding product to cart:', error);
-                              console.error('🛒 BrowseProducts: Error details:', { message: error.message, stack: error.stack });
-                              // Revert local state on failure
-                              setQuantityStates(prev => ({ ...prev, [product.id]: 0 }));
-                            }
-                          }}
-                          disabled={product.stock === 0}
+                          onClick={() => handleQuantityChange(product.id, 1)}
                         >
                           <ShoppingCart className="mr-2 h-4 w-4" />
-                          {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                          Add to Cart
                         </Button>
                       )}
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
 
-            {filteredProducts.length === 0 && !loading && (
+            {/* No Products */}
+            {filteredProducts.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No products found matching your criteria.</p>
+                <div className="text-6xl mb-4">🥬</div>
+                <h3 className="text-xl font-semibold mb-2">No products found</h3>
+                <p className="text-muted-foreground">
+                  Try adjusting your search terms or filters.
+                </p>
               </div>
             )}
           </div>
