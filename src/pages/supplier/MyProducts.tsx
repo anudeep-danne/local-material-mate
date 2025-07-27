@@ -21,6 +21,9 @@ const MyProducts = () => {
   const supplierId = user?.id;
   const { products, loading, error, deleteProduct } = useSupplierProducts(supplierId || "");
 
+  // Debug: Log only essential info
+  console.log('🏪 MyProducts: Products count:', products.length, 'Loading:', loading, 'Error:', error);
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;

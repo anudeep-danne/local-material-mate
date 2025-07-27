@@ -168,61 +168,172 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
   const placeOrder = async (cartItems: any[]) => {
     try {
       console.log('🔄 Orders: Placing orders for cart items:', cartItems);
+      console.log('🔄 Orders: Cart items structure:', cartItems.map(item => ({
+        id: item.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        vendor_id: item.vendor_id,
+        product: {
+          id: item.product?.id,
+          name: item.product?.name,
+          supplier_id: item.product?.supplier_id,
+          price: item.product?.price
+        }
+      })));
       
+      // Test: Log the first cart item in detail
+      if (cartItems.length > 0) {
+        const firstItem = cartItems[0];
+        console.log('🔄 Orders: First cart item detailed structure:', {
+          id: firstItem.id,
+          product_id: firstItem.product_id,
+          product_id_from_product: firstItem.product?.id,
+          quantity: firstItem.quantity,
+          vendor_id: firstItem.vendor_id,
+          product: firstItem.product
+        });
+      }
+      
+      // First, validate stock availability for all items
+      for (const item of cartItems) {
+        const productId = item.product_id || item.product?.id;
+        console.log('🔄 Orders: Validating stock for product:', productId, 'Quantity:', item.quantity);
+        
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('id, name, stock')
+          .eq('id', productId)
+          .single();
+        
+        if (productError || !product) {
+          throw new Error(`Product not found: ${productId}`);
+        }
+        
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+        }
+      }
+      
+      // Create orders and reduce stock atomically
       const orderPromises = cartItems.map(async (item) => {
         const totalAmount = item.product.price * item.quantity;
+        
+        // Ensure we have the correct product_id
+        const productId = item.product_id || item.product?.id;
+        if (!productId) {
+          throw new Error('Product ID not found in cart item');
+        }
         
         console.log('🔄 Orders: Creating order for item:', {
           vendor_id: item.vendor_id,
           supplier_id: item.product.supplier_id,
-          product_id: item.product_id,
+          product_id: productId,
           quantity: item.quantity,
           total_amount: totalAmount,
           status: 'Pending'
         });
         
-        return supabase
+        // First, reduce stock to ensure it's available
+        console.log('🔄 Orders: Attempting to reduce stock for product:', productId, 'Quantity:', item.quantity);
+        console.log('🔄 Orders: Item structure:', {
+          id: item.id,
+          product_id: productId,
+          quantity: item.quantity,
+          vendor_id: item.vendor_id,
+          product: item.product
+        });
+        
+        // Direct test: Let's verify the product exists first
+        const { data: testProduct, error: testError } = await supabase
+          .from('products')
+          .select('id, name, stock')
+          .eq('id', productId)
+          .single();
+        
+        console.log('🔄 Orders: Product verification before stock reduction:', { testProduct, testError });
+        
+        if (testError || !testProduct) {
+          throw new Error(`Product not found before stock reduction: ${productId}`);
+        }
+        
+        // Try stock reduction with better error handling
+        try {
+          const { data: stockResult, error: stockError } = await supabase
+            .rpc('reduce_product_stock', {
+              p_product_id: productId,
+              p_quantity: item.quantity
+            });
+          
+          if (stockError) {
+            console.error('❌ Orders: Stock reduction failed:', stockError);
+            console.error('❌ Orders: Product ID:', productId);
+            console.error('❌ Orders: Quantity:', item.quantity);
+            throw new Error(`Failed to reduce stock: ${stockError.message}`);
+          }
+          
+          console.log('✅ Orders: Stock reduced successfully for product:', productId);
+        } catch (stockError) {
+          console.error('❌ Orders: Exception during stock reduction:', stockError);
+          throw new Error(`Stock reduction failed: ${stockError instanceof Error ? stockError.message : 'Unknown error'}`);
+        }
+        
+        // Now create the order
+        const { data: order, error: orderError } = await supabase
           .from('orders')
           .insert({
             vendor_id: item.vendor_id,
             supplier_id: item.product.supplier_id,
-            product_id: item.product_id,
+            product_id: productId,
             quantity: item.quantity,
             total_amount: totalAmount,
             status: 'Pending',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          });
+          })
+          .select()
+          .single();
+        
+        if (orderError) {
+          // If order creation fails, we should restore the stock
+          console.error('❌ Orders: Order creation failed, restoring stock:', orderError);
+          try {
+            await supabase.rpc('restore_product_stock', {
+              p_product_id: productId,
+              p_quantity: item.quantity
+            });
+            console.log('✅ Orders: Stock restored after order creation failure');
+          } catch (restoreError) {
+            console.error('❌ Orders: Failed to restore stock after order creation failure:', restoreError);
+          }
+          throw new Error(`Failed to create order: ${orderError.message}`);
+        }
+        
+        console.log('✅ Orders: Order created successfully for product:', productId);
+        return order;
       });
 
       const results = await Promise.all(orderPromises);
       
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        console.error('🔄 Orders: Order placement errors:', errors);
-        throw new Error('Some orders failed to place');
-      }
-
-          console.log('🔄 Orders: All orders placed successfully');
-    toast.success('Orders placed successfully!');
-    
-    // The real-time subscription will automatically refresh the orders
-    // But we can also manually refresh to ensure immediate update
-    console.log('🔄 Orders: Triggering immediate order refresh...');
-    
-    // Immediate refresh after order placement
-    setTimeout(() => {
-      console.log('🔄 Orders: Executing immediate fetchOrders after order placement...');
-      fetchOrders();
-    }, 100);
-    
-    // Additional refresh after a short delay to ensure order is in database
-    setTimeout(() => {
-      console.log('🔄 Orders: Executing delayed fetchOrders after order placement...');
-      fetchOrders();
-    }, 1000);
-    
-    return true;
+      console.log('🔄 Orders: All orders placed successfully');
+      toast.success('Orders placed successfully!');
+      
+      // The real-time subscription will automatically refresh the orders
+      // But we can also manually refresh to ensure immediate update
+      console.log('🔄 Orders: Triggering immediate order refresh...');
+      
+      // Immediate refresh after order placement
+      setTimeout(() => {
+        console.log('🔄 Orders: Executing immediate fetchOrders after order placement...');
+        fetchOrders();
+      }, 100);
+      
+      // Additional refresh after a short delay to ensure order is in database
+      setTimeout(() => {
+        console.log('🔄 Orders: Executing delayed fetchOrders after order placement...');
+        fetchOrders();
+      }, 1000);
+      
+      return true;
     } catch (err) {
       console.error('🔄 Orders: Error placing orders:', err);
       const message = err instanceof Error ? err.message : 'Failed to place orders';
@@ -302,59 +413,78 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
 
   const cancelOrder = async (orderId: string) => {
     try {
-      console.log('🔄 Orders: Cancelling order:', orderId, 'User role:', userRole);
+      console.log('🔄 Orders: Cancelling order:', orderId);
       
-      if (!userId || userId.trim() === '') {
-        throw new Error('No valid user ID found. Please log in again.');
-      }
-
-      // Prepare update data
-      const updateData = {
-        status: 'Cancelled',
-        cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
-        updated_at: new Date().toISOString()
-      };
-
-      console.log('🔄 Orders: Update data for cancellation:', updateData);
-
-      const { error } = await supabase
+      // First, get the order details to know the product and quantity
+      const { data: order, error: orderError } = await supabase
         .from('orders')
-        .update(updateData)
-        .eq('id', orderId);
-
-      if (error) {
-        console.error('❌ Failed to cancel order:', error);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error code:', error.code);
-        console.error('❌ Error details:', error.details);
-        console.error('❌ Error hint:', error.hint);
-        throw error;
+        .select('id, product_id, quantity, status')
+        .eq('id', orderId)
+        .single();
+      
+      if (orderError || !order) {
+        throw new Error('Order not found');
       }
-
-      console.log('✅ Order cancelled successfully');
+      
+      // Only allow cancellation of pending orders
+      if (order.status !== 'Pending') {
+        throw new Error('Only pending orders can be cancelled');
+      }
+      
+      // Update order status to cancelled
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          status: 'Cancelled',
+          cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+      
+      if (updateError) {
+        throw new Error(`Failed to cancel order: ${updateError.message}`);
+      }
+      
+      // Restore stock using the database function
+      const { error: stockError } = await supabase
+        .rpc('restore_product_stock', {
+          p_product_id: order.product_id,
+          p_quantity: order.quantity
+        });
+      
+      if (stockError) {
+        console.error('🔄 Orders: Failed to restore stock:', stockError);
+        // Don't throw error here as the order is already cancelled
+        // Just log the error for debugging
+      } else {
+        console.log('✅ Orders: Stock restored successfully for product:', order.product_id);
+      }
       
       // Update local state
       setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
+        prevOrders.map(o => 
+          o.id === orderId 
             ? { 
-                ...order, 
-                status: 'Cancelled', 
+                ...o, 
+                status: 'Cancelled',
                 cancelled_by: userRole === 'vendor' ? 'vendor' : 'supplier',
                 updated_at: new Date().toISOString()
               }
-            : order
+            : o
         )
       );
       
       toast.success('Order cancelled successfully');
       
+      // Refresh orders to ensure consistency
+      setTimeout(() => {
+        fetchOrders();
+      }, 500);
+      
     } catch (err) {
-      console.error('❌ Exception in cancelOrder:', err);
       const message = err instanceof Error ? err.message : 'Failed to cancel order';
       setError(message);
       toast.error(message);
-      throw err; // Re-throw to allow calling function to handle
     }
   };
 

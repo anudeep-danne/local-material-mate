@@ -207,54 +207,96 @@ export type Database = {
           },
         ]
       }
-      users: {
+      stock_changes: {
         Row: {
+          change_amount: number
+          change_type: string
           created_at: string
           id: string
-          name: string
-          role: string
-          business_name: string | null
-          email: string | null
-          phone: string | null
-          address: string | null
-          city: string | null
-          state: string | null
-          pincode: string | null
-          latitude: number | null
-          longitude: number | null
-          description: string | null
+          new_stock: number
+          old_stock: number
+          order_id: string | null
+          product_id: string
         }
         Insert: {
+          change_amount: number
+          change_type: string
           created_at?: string
           id?: string
-          name: string
-          role: string
-          business_name?: string | null
-          email?: string | null
-          phone?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          pincode?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          description?: string | null
+          new_stock: number
+          old_stock: number
+          order_id?: string | null
+          product_id: string
         }
         Update: {
+          change_amount?: number
+          change_type?: string
           created_at?: string
           id?: string
-          name?: string
-          role?: string
-          business_name?: string | null
-          email?: string | null
-          phone?: string | null
+          new_stock?: number
+          old_stock?: number
+          order_id?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_changes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_changes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          address: string | null
+          business_name: string | null
+          city: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          pincode: string | null
+          role: string
+          state: string | null
+        }
+        Insert: {
           address?: string | null
+          business_name?: string | null
           city?: string | null
-          state?: string | null
-          pincode?: string | null
-          latitude?: number | null
-          longitude?: number | null
+          created_at?: string
           description?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          pincode?: string | null
+          role: string
+          state?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_name?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          pincode?: string | null
+          role?: string
+          state?: string | null
         }
         Relationships: []
       }
@@ -263,7 +305,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reduce_product_stock: {
+        Args: {
+          p_product_id: string
+          p_quantity: number
+        }
+        Returns: boolean
+      }
+      restore_product_stock: {
+        Args: {
+          p_product_id: string
+          p_quantity: number
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
