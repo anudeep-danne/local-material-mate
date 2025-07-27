@@ -11,6 +11,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ const AddProduct = () => {
     description: "",
     image: null as File | null
   });
+  const [saving, setSaving] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -40,33 +43,64 @@ const AddProduct = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if user is logged in
-    if (!user) {
-      alert("You must be logged in to add products.");
-      return;
-    }
-    
-    // Convert price and quantity to numbers
-    const price = parseFloat(formData.price);
-    const stock = parseInt(formData.quantity, 10);
-    if (!formData.name || !formData.category || isNaN(price) || isNaN(stock) || !formData.unit) {
-      alert("Please fill all required fields.");
-      return;
-    }
-    
-    console.log('🔄 AddProduct: Adding product for supplier:', user.id, user.name, user.business_name);
-    
-    // Call addProduct from hook
-    const success = await addProduct({
-      name: formData.name,
-      price,
-      stock,
-      category: formData.category,
-      image_url: undefined // Not handling image upload yet
-    });
-    if (success) {
-      navigate('/supplier/products');
+    if (saving) return;
+    setSaving(true);
+    try {
+      // Check if user is logged in
+      if (!user) {
+        toast.error("You must be logged in to add products.");
+        setSaving(false);
+        return;
+      }
+      // Convert price and quantity to numbers
+      const price = parseFloat(formData.price);
+      const stock = parseInt(formData.quantity, 10);
+      if (!formData.name || !formData.category || isNaN(price) || isNaN(stock) || !formData.unit) {
+        toast.error("Please fill all required fields.");
+        setSaving(false);
+        return;
+      }
+      let imageUrl: string | undefined = undefined;
+      if (formData.image) {
+        // Upload image to Supabase Storage
+        const fileExt = formData.image.name.split('.').pop();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const { data, error } = await supabase.storage.from('product-images').upload(fileName, formData.image);
+        if (error) {
+          toast.error('Image upload failed: ' + error.message);
+          console.error('Image upload failed:', error);
+          setSaving(false);
+          return;
+        }
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        if (!publicUrlData?.publicUrl) {
+          toast.error('Failed to get public image URL.');
+          console.error('Get public URL failed:', publicUrlData);
+          setSaving(false);
+          return;
+        }
+        imageUrl = publicUrlData.publicUrl;
+      }
+      // Call addProduct from hook
+      const success = await addProduct({
+        name: formData.name,
+        price,
+        stock,
+        category: formData.category,
+        image_url: imageUrl
+      });
+      if (success) {
+        toast.success('Product added successfully!');
+        navigate('/supplier/products');
+      } else {
+        toast.error('Failed to add product.');
+      }
+    } catch (err) {
+      toast.error('Unexpected error occurred.');
+      console.error('Add product error:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -232,9 +266,13 @@ const AddProduct = () => {
                         type="submit" 
                         variant="supplier" 
                         className="flex-1"
+                        disabled={saving}
                       >
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Product
+                        {saving ? (
+                          <span className="flex items-center"><Save className="mr-2 h-4 w-4 animate-spin" />Saving...</span>
+                        ) : (
+                          <span className="flex items-center"><Save className="mr-2 h-4 w-4" />Save Product</span>
+                        )}
                       </Button>
                     </div>
                   </form>
