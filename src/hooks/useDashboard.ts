@@ -72,13 +72,8 @@ export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') =>
 
       if (ordersError) throw ordersError;
 
-      // Fetch cart items
-      const { data: cartItems, error: cartError } = await supabase
-        .from('cart')
-        .select('*')
-        .eq('vendor_id', userId);
-
-      if (cartError) throw cartError;
+      // Cart items are now handled by CartContext for real-time updates
+      // No need to fetch cart items here as they're managed globally
 
       // Fetch monthly spend
       const startOfMonth = new Date();
@@ -173,7 +168,7 @@ export const useDashboard = (userId: string, userRole: 'vendor' | 'supplier') =>
       setStats(prev => ({
         ...prev,
         activeOrders: activeOrders?.length || 0,
-        cartItems: cartItems?.length || 0,
+        cartItems: 0, // Cart items are now handled by CartContext
         monthlySpend: monthlyOrders?.reduce((sum, order) => sum + order.total_amount, 0) || 0,
         totalSuppliers: uniqueSuppliers.size,
         recentActivity,

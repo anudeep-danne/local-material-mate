@@ -29,3 +29,4 @@ CREATE POLICY "Allow all cart operations for development" ON public.cart
 
 -- Add a comment to document this is for development
 COMMENT ON POLICY "Allow all cart operations for development" ON public.cart IS 'Development policy - allows all cart operations without authentication';
+

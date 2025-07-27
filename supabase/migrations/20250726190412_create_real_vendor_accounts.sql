@@ -89,3 +89,4 @@ DELETE FROM public.cart WHERE vendor_id IS NULL OR product_id IS NULL;
 
 -- Add comments for documentation
 COMMENT ON TABLE public.users IS 'Users table with real vendor accounts for testing';
+

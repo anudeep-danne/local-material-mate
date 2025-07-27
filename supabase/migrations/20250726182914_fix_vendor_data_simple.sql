@@ -20,3 +20,4 @@ AND EXISTS (SELECT 1 FROM public.users WHERE role = 'vendor');
 
 -- Add a comment to document this migration
 COMMENT ON TABLE public.orders IS 'Orders table with proper vendor and supplier relationships';
+

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Search, Plus, Minus } from "lucide-react";
 import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
-import { useCart } from "@/hooks/useCart";
+import { useCartContext } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
 
 const BrowseProducts = () => {
@@ -24,6 +24,9 @@ const BrowseProducts = () => {
   // Debug: Log vendor ID and user info
   console.log('🛒 BrowseProducts: User info:', user);
   console.log('🛒 BrowseProducts: Vendor ID being used:', vendorId);
+  console.log('🛒 BrowseProducts: User authenticated:', !!user);
+  console.log('🛒 BrowseProducts: User ID:', user?.id);
+  console.log('🛒 BrowseProducts: User role:', user?.role);
   
   const filters = {
     category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -32,7 +35,7 @@ const BrowseProducts = () => {
   };
 
   const { products, loading, error } = useProducts(filters);
-  const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart(vendorId);
+  const { cartItems, addToCart, updateQuantity, removeFromCart } = useCartContext();
   
   // Debug: Log cart items when they change
   console.log('🛒 BrowseProducts: Current cart items:', cartItems);
@@ -269,11 +272,15 @@ const BrowseProducts = () => {
                           onClick={async () => {
                             try {
                               console.log('🛒 BrowseProducts: Add to cart button clicked for product:', product.id);
+                              console.log('🛒 BrowseProducts: Current vendor ID:', vendorId);
+                              console.log('🛒 BrowseProducts: Product details:', { id: product.id, name: product.name, price: product.price });
                               setQuantityStates(prev => ({ ...prev, [product.id]: 1 }));
+                              console.log('🛒 BrowseProducts: Calling addToCart with:', { productId: product.id, quantity: 1, vendorId });
                               await addToCart(product.id, 1);
                               console.log('🛒 BrowseProducts: Successfully added product to cart:', product.id);
                             } catch (error) {
                               console.error('🛒 BrowseProducts: Error adding product to cart:', error);
+                              console.error('🛒 BrowseProducts: Error details:', { message: error.message, stack: error.stack });
                               // Revert local state on failure
                               setQuantityStates(prev => ({ ...prev, [product.id]: 0 }));
                             }

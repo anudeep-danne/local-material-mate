@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
-import { useCart } from "@/hooks/useCart";
+import { useCartContext } from "@/contexts/CartContext";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -13,7 +13,7 @@ const Cart = () => {
   const { user } = useAuth();
   const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   
-  const { cartItems, loading, total, updateQuantity, removeFromCart, clearCart } = useCart(vendorId);
+  const { cartItems, loading, total, updateQuantity, removeFromCart, clearCart } = useCartContext();
   const { placeOrder } = useOrders(vendorId, 'vendor');
   
   // Debug: Log cart items when they change
@@ -89,7 +89,15 @@ const Cart = () => {
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              onClick={async () => {
+                                try {
+                                  console.log('🛒 Cart: Decreasing quantity for item:', item.id, 'Current:', item.quantity, 'New:', item.quantity - 1);
+                                  await updateQuantity(item.id, item.quantity - 1);
+                                } catch (error) {
+                                  console.error('🛒 Cart: Error decreasing quantity:', error);
+                                }
+                              }}
+                              disabled={item.quantity <= 1}
                             >
                               <Minus className="h-4 w-4" />
                             </Button>
@@ -99,7 +107,15 @@ const Cart = () => {
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              onClick={async () => {
+                                try {
+                                  console.log('🛒 Cart: Increasing quantity for item:', item.id, 'Current:', item.quantity, 'New:', item.quantity + 1);
+                                  await updateQuantity(item.id, item.quantity + 1);
+                                } catch (error) {
+                                  console.error('🛒 Cart: Error increasing quantity:', error);
+                                }
+                              }}
+                              disabled={item.quantity >= item.product.stock}
                             >
                               <Plus className="h-4 w-4" />
                             </Button>
@@ -111,7 +127,14 @@ const Cart = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeFromCart(item.id)}
+                              onClick={async () => {
+                                try {
+                                  console.log('🛒 Cart: Removing item from cart:', item.id);
+                                  await removeFromCart(item.id);
+                                } catch (error) {
+                                  console.error('🛒 Cart: Error removing item:', error);
+                                }
+                              }}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />

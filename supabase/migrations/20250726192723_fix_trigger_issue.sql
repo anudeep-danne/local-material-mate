@@ -63,3 +63,4 @@ DELETE FROM public.cart WHERE product_id NOT IN (
 -- Add comments for documentation
 COMMENT ON TABLE public.users IS 'Users table with vendor accounts for cart operations';
 COMMENT ON TABLE public.cart IS 'Cart table for vendor shopping cart functionality';
+

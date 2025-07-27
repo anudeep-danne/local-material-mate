@@ -127,3 +127,4 @@ SELECT
   'Orders after cleanup' as status,
   COUNT(*) as total_orders
 FROM public.orders;
+

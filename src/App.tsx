@@ -29,6 +29,7 @@ import SupplierAccountSettings from "./pages/supplier/AccountSettings";
 import DebugAuth from "./pages/supplier/DebugAuth";
 import { SupplierLayout } from "@/components/SupplierLayout";
 import { useAuth } from '@/hooks/useAuth';
+import { CartProvider } from '@/contexts/CartContext';
 
 const queryClient = new QueryClient();
 
@@ -147,7 +148,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Router>
-          <AppRoutes />
+          <CartProvider>
+            <AppRoutes />
+          </CartProvider>
           <Toaster />
           <Sonner />
         </Router>

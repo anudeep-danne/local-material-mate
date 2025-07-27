@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
@@ -9,14 +10,44 @@ type CartItem = Database['public']['Tables']['cart']['Row'] & {
   };
 };
 
-export const useCart = (vendorId: string) => {
+interface CartContextType {
+  cartItems: CartItem[];
+  loading: boolean;
+  error: string | null;
+  total: number;
+  cartItemsCount: number;
+  addToCart: (productId: string, quantity?: number) => Promise<void>;
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
+  removeFromCart: (cartItemId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  refetch: () => Promise<void>;
+}
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
+export const useCartContext = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCartContext must be used within a CartProvider');
+  }
+  return context;
+};
+
+interface CartProviderProps {
+  children: ReactNode;
+}
+
+export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
+  const { user } = useAuth();
+  const vendorId = user?.id || "22222222-2222-2222-2222-222222222222";
+  
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCart = async () => {
     try {
-      console.log('🛒 useCart: Fetching cart for vendor:', vendorId);
+      console.log('🛒 CartContext: Fetching cart for vendor:', vendorId);
       setLoading(true);
       const { data, error } = await supabase
         .from('cart')
@@ -30,10 +61,10 @@ export const useCart = (vendorId: string) => {
         .eq('vendor_id', vendorId);
 
       if (error) throw error;
-      console.log('🛒 useCart: Cart data fetched:', data);
+      console.log('🛒 CartContext: Cart data fetched:', data);
       setCartItems(data as CartItem[]);
     } catch (err) {
-      console.error('🛒 useCart: Error fetching cart:', err);
+      console.error('🛒 CartContext: Error fetching cart:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -42,7 +73,7 @@ export const useCart = (vendorId: string) => {
 
   const addToCart = async (productId: string, quantity: number = 1) => {
     try {
-      console.log('🛒 useCart: Adding to cart - Product ID:', productId, 'Quantity:', quantity, 'Vendor ID:', vendorId);
+      console.log('🛒 CartContext: Adding to cart - Product ID:', productId, 'Quantity:', quantity, 'Vendor ID:', vendorId);
       
       if (!vendorId) {
         throw new Error('Vendor ID is required');
@@ -57,7 +88,7 @@ export const useCart = (vendorId: string) => {
         .single();
       
       if (vendorError || !vendor) {
-        console.error('🛒 useCart: Vendor not found:', vendorId, vendorError);
+        console.error('🛒 CartContext: Vendor not found:', vendorId, vendorError);
         throw new Error('Vendor account not found');
       }
       
@@ -68,11 +99,11 @@ export const useCart = (vendorId: string) => {
         .single();
       
       if (productError || !product) {
-        console.error('🛒 useCart: Product not found:', productId, productError);
+        console.error('🛒 CartContext: Product not found:', productId, productError);
         throw new Error('Product not found');
       }
       
-      console.log('🛒 useCart: Vendor and product verified:', vendor.name, product.name);
+      console.log('🛒 CartContext: Vendor and product verified:', vendor.name, product.name);
       
       // Use UPSERT logic to handle existing items
       const { data, error } = await supabase
@@ -94,17 +125,17 @@ export const useCart = (vendorId: string) => {
         .single();
       
       if (error) {
-        console.error('🛒 useCart: Error upserting cart item:', error);
+        console.error('🛒 CartContext: Error upserting cart item:', error);
         throw error;
       }
       
-      console.log('🛒 useCart: Successfully added to cart, cart item:', data);
+      console.log('🛒 CartContext: Successfully added to cart, cart item:', data);
       toast.success('Item added to cart');
       
-      console.log('🛒 useCart: Refreshing cart data');
+      console.log('🛒 CartContext: Refreshing cart data');
       await fetchCart();
     } catch (err) {
-      console.error('🛒 useCart: Error adding to cart:', err);
+      console.error('🛒 CartContext: Error adding to cart:', err);
       
       // Provide more specific error messages
       let message = 'Failed to add to cart';
@@ -128,13 +159,13 @@ export const useCart = (vendorId: string) => {
       
       setError(message);
       toast.error(message);
-      throw err; // Re-throw to let calling function handle it
+      throw err;
     }
   };
 
   const updateQuantity = async (cartItemId: string, quantity: number) => {
     try {
-      console.log('🛒 useCart: Updating quantity - Cart Item ID:', cartItemId, 'New quantity:', quantity);
+      console.log('🛒 CartContext: Updating quantity - Cart Item ID:', cartItemId, 'New quantity:', quantity);
       
       if (!cartItemId) {
         throw new Error('Cart item ID is required');
@@ -142,19 +173,19 @@ export const useCart = (vendorId: string) => {
       
       // Validate quantity
       if (quantity <= 0) {
-        console.log('🛒 useCart: Removing item from cart');
+        console.log('🛒 CartContext: Removing item from cart');
         const { error } = await supabase
           .from('cart')
           .delete()
           .eq('id', cartItemId);
         
         if (error) {
-          console.error('🛒 useCart: Error removing item:', error);
+          console.error('🛒 CartContext: Error removing item:', error);
           throw error;
         }
         toast.success('Item removed from cart');
       } else {
-        console.log('🛒 useCart: Updating item quantity to:', quantity);
+        console.log('🛒 CartContext: Updating item quantity to:', quantity);
         
         // Update the quantity directly
         const { error: updateError } = await supabase
@@ -166,18 +197,18 @@ export const useCart = (vendorId: string) => {
           .eq('id', cartItemId);
         
         if (updateError) {
-          console.error('🛒 useCart: Error updating quantity:', updateError);
+          console.error('🛒 CartContext: Error updating quantity:', updateError);
           throw updateError;
         }
         
-        console.log('🛒 useCart: Successfully updated quantity to:', quantity);
+        console.log('🛒 CartContext: Successfully updated quantity to:', quantity);
         toast.success('Cart updated successfully');
       }
       
-      console.log('🛒 useCart: Refreshing cart data after update');
+      console.log('🛒 CartContext: Refreshing cart data after update');
       await fetchCart();
     } catch (err) {
-      console.error('🛒 useCart: Error updating cart:', err);
+      console.error('🛒 CartContext: Error updating cart:', err);
       
       // Provide more specific error messages
       let message = 'Failed to update cart';
@@ -199,7 +230,7 @@ export const useCart = (vendorId: string) => {
       
       setError(message);
       toast.error(message);
-      throw err; // Re-throw to let calling function handle it
+      throw err;
     }
   };
 
@@ -236,9 +267,10 @@ export const useCart = (vendorId: string) => {
     }
   };
 
-    useEffect(() => {
+  // Set up real-time subscription
+  useEffect(() => {
     if (vendorId) {
-      console.log('🛒 useCart: Setting up cart for vendor:', vendorId);
+      console.log('🛒 CartContext: Setting up cart for vendor:', vendorId);
       fetchCart();
 
       // Set up real-time subscription for cart changes
@@ -253,29 +285,29 @@ export const useCart = (vendorId: string) => {
             filter: `vendor_id=eq.${vendorId}`
           },
           (payload) => {
-            console.log('🛒 useCart: Real-time cart change detected:', payload);
-            console.log('🛒 useCart: Change type:', payload.eventType);
-            console.log('🛒 useCart: Change data:', payload.new, payload.old);
+            console.log('🛒 CartContext: Real-time cart change detected:', payload);
+            console.log('🛒 CartContext: Change type:', payload.eventType);
+            console.log('🛒 CartContext: Change data:', payload.new, payload.old);
             
             // Immediately refresh cart data when changes occur
             fetchCart();
           }
         )
         .subscribe((status) => {
-          console.log('🛒 useCart: Real-time subscription status:', status);
+          console.log('🛒 CartContext: Real-time subscription status:', status);
           if (status === 'SUBSCRIBED') {
-            console.log('🛒 useCart: Successfully subscribed to cart changes');
+            console.log('🛒 CartContext: Successfully subscribed to cart changes');
           } else if (status === 'CHANNEL_ERROR') {
-            console.error('🛒 useCart: Real-time subscription error');
+            console.error('🛒 CartContext: Real-time subscription error');
           }
         });
 
       return () => {
-        console.log('🛒 useCart: Cleaning up real-time subscription for vendor:', vendorId);
+        console.log('🛒 CartContext: Cleaning up real-time subscription for vendor:', vendorId);
         supabase.removeChannel(channel);
       };
     } else {
-      console.log('🛒 useCart: No vendor ID, skipping cart setup');
+      console.log('🛒 CartContext: No vendor ID, skipping cart setup');
     }
   }, [vendorId]);
 
@@ -283,15 +315,26 @@ export const useCart = (vendorId: string) => {
     sum + (item.product.price * item.quantity), 0
   );
 
-  return {
+  const cartItemsCount = cartItems.reduce((sum, item) => 
+    sum + item.quantity, 0
+  );
+
+  const value: CartContextType = {
     cartItems,
     loading,
     error,
     total,
+    cartItemsCount,
     addToCart,
     updateQuantity,
     removeFromCart,
     clearCart,
     refetch: fetchCart
   };
-};
+
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+    </CartContext.Provider>
+  );
+}; 

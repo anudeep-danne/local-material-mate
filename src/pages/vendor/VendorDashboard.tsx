@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, Star, TrendingUp, Award, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useCartContext } from "@/contexts/CartContext";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -14,6 +15,7 @@ const VendorDashboard = () => {
   const { user } = useAuth();
   const vendorId = user?.id || "22222222-2222-2222-2222-222222222222"; // Fallback to real vendor account
   const { stats, loading, error, refetch } = useDashboard(vendorId, 'vendor');
+  const { cartItemsCount } = useCartContext();
 
   const renderStars = (rating: number) => {
     return [...Array(5)].map((_, i) => (
@@ -154,7 +156,7 @@ const VendorDashboard = () => {
                   <ShoppingCart className="h-4 w-4 text-vendor-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-vendor-primary">{stats.cartItems}</div>
+                  <div className="text-2xl font-bold text-vendor-primary">{cartItemsCount}</div>
                   <p className="text-xs text-muted-foreground">Ready to order</p>
                 </CardContent>
               </Card>

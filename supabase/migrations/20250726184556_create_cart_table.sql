@@ -60,3 +60,4 @@ COMMENT ON COLUMN public.cart.product_id IS 'ID of the product in the cart';
 COMMENT ON COLUMN public.cart.quantity IS 'Quantity of the product in the cart';
 COMMENT ON CONSTRAINT cart_vendor_id_fkey ON public.cart IS 'Foreign key reference to users table';
 COMMENT ON CONSTRAINT cart_product_id_fkey ON public.cart IS 'Foreign key reference to products table';
+

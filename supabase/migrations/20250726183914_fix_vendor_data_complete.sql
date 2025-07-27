@@ -162,3 +162,4 @@ COMMENT ON FUNCTION validate_vendor_data() IS 'Validates vendor data to ensure n
 COMMENT ON FUNCTION get_most_recent_valid_vendor() IS 'Gets the most recent valid vendor account';
 COMMENT ON VIEW clean_vendor_orders IS 'View showing only orders with valid vendor data';
 COMMENT ON CONSTRAINT check_vendor_name_not_generic ON public.users IS 'Prevents creation of generic vendor accounts';
+

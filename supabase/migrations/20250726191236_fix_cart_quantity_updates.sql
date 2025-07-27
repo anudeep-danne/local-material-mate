@@ -101,3 +101,4 @@ $$ LANGUAGE plpgsql;
 -- Add comments for documentation
 COMMENT ON FUNCTION update_cart_quantity_safe IS 'Safely updates cart item quantity with proper error handling';
 COMMENT ON FUNCTION add_to_cart_safe IS 'Safely adds items to cart with proper error handling';
+
