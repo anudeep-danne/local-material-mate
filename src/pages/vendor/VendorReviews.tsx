@@ -10,10 +10,12 @@ import { useVendorOrders } from "@/hooks/useVendorOrders";
 import { useProductReviews } from "@/hooks/useProductReviews";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const VendorReviews = () => {
   // Get authenticated user ID
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const vendorId = user?.id;
   
   const { orders, getRecentSuppliers, getOrdersForSupplier } = useVendorOrders(vendorId);
@@ -98,19 +100,15 @@ const VendorReviews = () => {
       setReviewStatus(status);
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Failed to load suppliers');
     } finally {
       setLoading(false);
     }
   }, [vendorId, getRecentSuppliers, getOrdersForSupplier, hasReviewedProduct]);
 
-  // Only fetch data when vendorId changes, not on every render
   useEffect(() => {
-    if (vendorId) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
-  }, [vendorId]); // Remove fetchData from dependencies to prevent infinite loop
+    fetchData();
+  }, [fetchData]);
 
   const handleStarClick = (starRating: number) => {
     setRating(starRating);
@@ -130,73 +128,73 @@ const VendorReviews = () => {
   };
 
   const handleSubmit = async () => {
-    if (!vendorId || !selectedSupplier || !selectedOrder || rating === 0 || !comment.trim()) {
-      toast.error("Please fill in all required fields");
+    if (!selectedOrder || rating === 0 || !comment.trim()) {
+      toast.error('Please fill in all fields');
       return;
     }
 
-    // Get the product ID from the selected order
-    const selectedOrderData = supplierOrders.find(order => order.id === selectedOrder);
-    if (!selectedOrderData) {
-      toast.error("Invalid order selected");
-      return;
-    }
-
-    setSubmitting(true);
-    
     try {
-      const success = await submitReview({
-        productId: selectedOrderData.product_id,
-        orderId: selectedOrder,
-        vendorId: vendorId,
+      setSubmitting(true);
+      
+      const selectedProduct = uniqueProducts.find(product => product.order_id === selectedOrder);
+      if (!selectedProduct) {
+        toast.error('Product not found');
+        return;
+      }
+
+      await submitReview({
+        productId: selectedProduct.product_id,
+        orderId: selectedProduct.order_id,
+        vendorId: vendorId!,
         supplierId: selectedSupplier,
         rating: rating,
-        comment: comment
+        comment: comment.trim()
       });
 
-      if (success) {
-        // Reset form
-        setSelectedSupplier("");
-        setSelectedOrder("");
-        setRating(0);
-        setComment("");
-        
-        // Update review status
-        setReviewStatus(prev => ({
-          ...prev,
-          [`${selectedSupplier}-${selectedOrderData.product_id}`]: true
-        }));
-        
-        // Refresh data after successful submission
-        fetchData();
-      }
+      // Reset form
+      setSelectedOrder("");
+      setRating(0);
+      setComment("");
+      
+      // Update review status
+      setReviewStatus(prev => ({
+        ...prev,
+        [`${selectedSupplier}-${selectedProduct.product_id}`]: true
+      }));
+
+      toast.success('Review submitted successfully!');
+      
+      // Refresh data
+      await fetchData();
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Failed to submit review');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
-      try {
-        const success = await deleteReview(reviewId);
-        if (success) {
-          // Refresh data after successful deletion
-          fetchData();
-        }
-      } catch (error) {
-        console.error('Error deleting review:', error);
-      }
+    try {
+      await deleteReview(reviewId);
+      toast.success('Review deleted successfully!');
+      
+      // Refresh data
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      toast.error('Failed to delete review');
     }
   };
 
   const renderStars = (rating: number, interactive: boolean = false) => {
-    return [...Array(5)].map((_, i) => (
+    return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`h-5 w-5 cursor-pointer transition-colors ${
+        className={`h-5 w-5 md:h-6 md:w-6 cursor-pointer transition-colors ${
           i < rating
-            ? "text-yellow-400 fill-current"
-            : "text-gray-300 hover:text-yellow-200"
+            ? 'fill-yellow-400 text-yellow-400'
+            : 'text-gray-300 hover:text-yellow-400'
         }`}
         onClick={interactive ? () => handleStarClick(i + 1) : undefined}
       />
@@ -213,235 +211,222 @@ const VendorReviews = () => {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <VendorSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Product Reviews & Ratings</h1>
-            </header>
-            <div className="p-6">
-              <div className="text-center py-12">
-                <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Loading suppliers...</p>
-              </div>
-            </div>
-          </main>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Product Reviews & Ratings</h1>
+        </header>
+        <div className="p-4 md:p-6">
+          <div className="text-center py-12">
+            <div className="animate-spin h-8 w-8 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
+            <p className="mt-4 text-sm md:text-base text-muted-foreground">Loading suppliers...</p>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   // Check if user is authenticated
   if (!user || !vendorId) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <VendorSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Product Reviews & Ratings</h1>
-            </header>
-            <div className="p-6">
-              <div className="text-center py-12">
-                <div className="text-red-500 mb-4">
-                  <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
-                <p className="text-muted-foreground">
-                  Please log in to access the reviews section.
-                </p>
-              </div>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Product Reviews & Ratings</h1>
+        </header>
+        <div className="p-4 md:p-6">
+          <div className="text-center py-12">
+            <div className="text-red-500 mb-4">
+              <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
-          </main>
+            <h3 className="text-base md:text-lg font-medium mb-2">Authentication Required</h3>
+            <p className="text-sm md:text-base text-muted-foreground">
+              Please log in to access the reviews section.
+            </p>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <VendorSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-2xl font-semibold text-foreground">Product Reviews & Ratings</h1>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+        <SidebarTrigger className="mr-4" />
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Product Reviews & Ratings</h1>
+      </header>
 
-          {/* Content */}
-          <div className="p-6 space-y-8">
-            {/* Submit Review Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-vendor-primary">Submit a Product Review</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Select Supplier</label>
-                    <Select value={selectedSupplier} onValueChange={handleSupplierChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a supplier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {recentSuppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+      {/* Content */}
+      <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+        {/* Submit Review Form */}
+        <Card>
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-vendor-primary text-base md:text-lg">Submit a Product Review</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 md:p-6 space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div>
+                <label className="text-xs md:text-sm font-medium mb-2 block">Select Supplier</label>
+                <Select value={selectedSupplier} onValueChange={handleSupplierChange}>
+                  <SelectTrigger className="h-10 md:h-9">
+                    <SelectValue placeholder="Choose a supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recentSuppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Select Order</label>
-                    <Select value={selectedOrder} onValueChange={handleOrderChange} disabled={!selectedSupplier}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose an order" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {uniqueProducts.map((product) => {
-                          const isReviewed = reviewStatus[`${selectedSupplier}-${product.product_id}`];
-                          return (
-                            <SelectItem key={product.order_id} value={product.order_id} disabled={isReviewed}>
-                              <div className="flex items-center justify-between w-full">
-                                <span>{product.product_name}</span>
-                                {isReviewed && <CheckCircle className="h-4 w-4 text-green-500 ml-2" />}
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+              <div>
+                <label className="text-xs md:text-sm font-medium mb-2 block">Select Order</label>
+                <Select value={selectedOrder} onValueChange={handleOrderChange} disabled={!selectedSupplier}>
+                  <SelectTrigger className="h-10 md:h-9">
+                    <SelectValue placeholder="Choose an order" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueProducts.map((product) => {
+                      const isReviewed = reviewStatus[`${selectedSupplier}-${product.product_id}`];
+                      return (
+                        <SelectItem key={product.order_id} value={product.order_id} disabled={isReviewed}>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="truncate">{product.product_name}</span>
+                            {isReviewed && <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-500 ml-2 flex-shrink-0" />}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {selectedOrder && (
+              <>
+                <div>
+                  <label className="text-xs md:text-sm font-medium mb-2 block">Product</label>
+                  <div className="p-3 bg-muted rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="font-medium text-sm md:text-base truncate">
+                        {uniqueProducts.find(product => product.order_id === selectedOrder)?.product_name || 'Unknown Product'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {selectedOrder && (
-                  <>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Product</label>
-                      <div className="p-3 bg-muted rounded-md">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">
-                            {uniqueProducts.find(product => product.order_id === selectedOrder)?.product_name || 'Unknown Product'}
+                <div>
+                  <label className="text-xs md:text-sm font-medium mb-2 block">Rating</label>
+                  <div className="flex gap-1">
+                    {renderStars(rating, true)}
+                  </div>
+                  <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                    {rating > 0 ? `${rating} out of 5 stars` : "Click to rate"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs md:text-sm font-medium mb-2 block">Review Comment</label>
+                  <Textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Share your experience with this product..."
+                    rows={4}
+                    maxLength={500}
+                    className="text-sm md:text-base"
+                  />
+                  <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                    {comment.length}/500 characters
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleSubmit} 
+                  disabled={submitting || rating === 0 || !comment.trim()}
+                  className="w-full h-10 md:h-9"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+                      Submit Review
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Past Reviews */}
+        <Card>
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-vendor-primary text-base md:text-lg">Your Past Product Reviews</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 md:p-6">
+            {reviewsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin h-6 w-6 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-2 text-sm md:text-base text-muted-foreground">Loading reviews...</p>
+              </div>
+            ) : pastReviews.length > 0 ? (
+              <div className="space-y-3 md:space-y-4">
+                {pastReviews.map((review) => (
+                  <div key={review.id} className="border rounded-lg p-3 md:p-4">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-2 gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm md:text-base truncate">{review.product_name}</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground">from {review.supplier_name}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          {renderStars(review.rating)}
+                          <span className="text-xs md:text-sm text-muted-foreground ml-1">
+                            ({review.rating}/5)
                           </span>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteReview(review.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 md:h-9 text-xs md:text-sm"
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
-
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Rating</label>
-                      <div className="flex gap-1">
-                        {renderStars(rating, true)}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {rating > 0 ? `${rating} out of 5 stars` : "Click to rate"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Review Comment</label>
-                      <Textarea
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        placeholder="Share your experience with this product..."
-                        rows={4}
-                        maxLength={500}
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {comment.length}/500 characters
-                      </p>
-                    </div>
-
-                    <Button 
-                      onClick={handleSubmit} 
-                      disabled={submitting || rating === 0 || !comment.trim()}
-                      className="w-full"
-                    >
-                      {submitting ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                          Submitting...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-4 w-4 mr-2" />
-                          Submit Review
-                        </>
-                      )}
-                    </Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Past Reviews */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-vendor-primary">Your Past Product Reviews</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {reviewsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin h-6 w-6 border-2 border-vendor-primary border-t-transparent rounded-full mx-auto"></div>
-                    <p className="mt-2 text-muted-foreground">Loading reviews...</p>
-                  </div>
-                ) : pastReviews.length > 0 ? (
-                  <div className="space-y-4">
-                    {pastReviews.map((review) => (
-                      <div key={review.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-medium">{review.product_name}</h4>
-                            <p className="text-sm text-muted-foreground">from {review.supplier_name}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              {renderStars(review.rating)}
-                              <span className="text-sm text-muted-foreground ml-1">
-                                ({review.rating}/5)
-                              </span>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteReview(review.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">{review.comment}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Reviewed on {formatDate(review.created_at)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No reviews yet</h3>
-                    <p className="text-muted-foreground">
-                      Submit your first product review above to get started.
+                    <p className="text-xs md:text-sm text-muted-foreground mb-2 break-words">{review.comment}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Reviewed on {formatDate(review.created_at)}
                     </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Package className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-base md:text-lg font-medium mb-2">No reviews yet</h3>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Submit your first product review above to get started.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </SidebarProvider>
+    </>
   );
 };
 

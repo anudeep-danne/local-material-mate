@@ -201,24 +201,20 @@ const BrowseProducts = () => {
 
   if (error) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <VendorSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-2xl font-semibold text-foreground">Browse Products</h1>
-            </header>
-            <div className="p-6">
-              <div className="text-center py-8">
-                <div className="text-lg text-destructive mb-4">Error loading products</div>
-                <div className="text-sm text-muted-foreground mb-4">{error}</div>
-                <Button onClick={() => window.location.reload()}>Retry</Button>
-              </div>
-            </div>
-          </main>
+      <>
+        {/* Header */}
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Browse Products</h1>
+        </header>
+        <div className="p-4 md:p-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-destructive mb-4">Error loading products</div>
+            <div className="text-sm text-muted-foreground mb-4">{error}</div>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
@@ -235,19 +231,15 @@ const BrowseProducts = () => {
   ];
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <VendorSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-2xl font-semibold text-foreground">Browse Products</h1>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+        <SidebarTrigger className="mr-4" />
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Browse Products</h1>
+      </header>
 
-          {/* Content */}
-          <div className="p-6 space-y-6">
+      {/* Content */}
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -324,7 +316,7 @@ const BrowseProducts = () => {
             </div>
 
             {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
               {filteredProducts.map((product) => {
                 const currentQuantity = getCurrentQuantity(product.id);
                 const quantityState = getQuantityState(product.id);
@@ -332,7 +324,7 @@ const BrowseProducts = () => {
                 
                 return (
                   <Card key={product.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3">
+                    <CardHeader className="pb-3 p-3 md:p-6">
                       <div className="aspect-square bg-muted rounded-lg mb-3 flex items-center justify-center">
                         {product.image_url ? (
                           <img
@@ -341,10 +333,10 @@ const BrowseProducts = () => {
                             className="w-full h-full object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="text-muted-foreground text-center">
-                            <div className="text-4xl mb-2">🥬</div>
-                            <div className="text-sm">No Image</div>
-                          </div>
+                                                  <div className="text-muted-foreground text-center">
+                          <div className="text-2xl md:text-4xl mb-2">🥬</div>
+                          <div className="text-xs md:text-sm">No Image</div>
+                        </div>
                         )}
                       </div>
                       
@@ -371,10 +363,10 @@ const BrowseProducts = () => {
                         )}
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-lg font-bold text-vendor-primary">
+                          <span className="text-base md:text-lg font-bold text-vendor-primary">
                             ₹{product.price}
                           </span>
-                          <Badge variant="secondary">{product.category}</Badge>
+                          <Badge variant="secondary" className="text-xs md:text-sm">{product.category}</Badge>
                         </div>
                         {/* Real-time Stock Display with Status */}
                         <div className="mt-2 flex items-center gap-2 text-xs">
@@ -453,10 +445,8 @@ const BrowseProducts = () => {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default BrowseProducts;

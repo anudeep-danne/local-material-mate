@@ -21,9 +21,11 @@ import { useNavigate } from "react-router-dom";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const IncomingOrders = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user, loading: authLoading, error: authError } = useAuth();
   const supplierId = user?.id;
   const { orders, loading, updateOrderStatus } = useOrders(supplierId || null, 'supplier');
@@ -87,32 +89,30 @@ const IncomingOrders = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "Delivered":
-        return <CheckCircle className="h-4 w-4" />;
+        return <CheckCircle className="h-3 w-3 md:h-4 md:w-4" />;
       case "Out for Delivery":
-        return <Truck className="h-4 w-4" />;
+        return <Truck className="h-3 w-3 md:h-4 md:w-4" />;
       case "Shipped":
-        return <Package className="h-4 w-4" />;
+        return <Package className="h-3 w-3 md:h-4 md:w-4" />;
       case "Packed":
-        return <Package className="h-4 w-4" />;
+        return <Package className="h-3 w-3 md:h-4 md:w-4" />;
       case "Cancelled":
-        return <XCircle className="h-4 w-4" />;
+        return <XCircle className="h-3 w-3 md:h-4 md:w-4" />;
       case "Pending":
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="h-3 w-3 md:h-4 md:w-4" />;
       default:
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="h-3 w-3 md:h-4 md:w-4" />;
     }
   };
-  
-  // Accept order function
+
   const handleAcceptOrder = async (orderId: string) => {
     try {
-      await updateOrderStatus(orderId, "Packed");
+      await updateOrderStatus(orderId, 'Packed');
       toast({
-        title: "Success",
-        description: "Order accepted and marked as packed",
+        title: "Order Accepted",
+        description: "Order status updated to Packed",
       });
     } catch (error) {
-      console.error('❌ Failed to accept order:', error);
       toast({
         title: "Error",
         description: "Failed to accept order",
@@ -120,18 +120,16 @@ const IncomingOrders = () => {
       });
     }
   };
-  
-  // Decline order function
+
   const handleDeclineOrder = async (orderId: string) => {
     try {
-      await updateOrderStatus(orderId, "Cancelled");
+      await updateOrderStatus(orderId, 'Cancelled');
       setOrderToDecline(null);
       toast({
-        title: "Success",
-        description: "Order declined successfully",
+        title: "Order Declined",
+        description: "Order has been cancelled",
       });
     } catch (error) {
-      console.error('❌ Failed to decline order:', error);
       toast({
         title: "Error",
         description: "Failed to decline order",
@@ -139,66 +137,49 @@ const IncomingOrders = () => {
       });
     }
   };
-  
-  // Get next status in sequence
+
   const getNextStatus = (currentStatus: string) => {
-    switch (currentStatus) {
-      case "Packed": return "Shipped";
-      case "Shipped": return "Out for Delivery";
-      case "Out for Delivery": return "Delivered";
-      default: return null;
-    }
+    const statusFlow = {
+      'Packed': 'Shipped',
+      'Shipped': 'Out for Delivery',
+      'Out for Delivery': 'Delivered'
+    };
+    return statusFlow[currentStatus as keyof typeof statusFlow] || currentStatus;
   };
-  
-  // Get button label for next status
+
   const getNextStatusLabel = (currentStatus: string) => {
-    switch (currentStatus) {
-      case "Packed": return "Mark as Shipped";
-      case "Shipped": return "Mark as Out for Delivery";
-      case "Out for Delivery": return "Mark as Delivered";
-      default: return "";
-    }
-  };
-  
-  // Update status to next in sequence
-  const handleUpdateStatus = async (orderId: string, currentStatus: string) => {
     const nextStatus = getNextStatus(currentStatus);
-    if (!nextStatus) return;
-    
+    return `Mark as ${nextStatus}`;
+  };
+
+  const handleUpdateStatus = async (orderId: string, currentStatus: string) => {
     try {
+      const nextStatus = getNextStatus(currentStatus);
       await updateOrderStatus(orderId, nextStatus);
       toast({
-        title: "Success",
-        description: `Status updated to ${nextStatus}`,
+        title: "Status Updated",
+        description: `Order status updated to ${nextStatus}`,
       });
     } catch (error) {
-      console.error('❌ Failed to update status:', error);
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description: "Failed to update order status",
         variant: "destructive",
       });
     }
   };
-  
-  // Get status buttons based on current status
+
   const getStatusButtons = (order: any) => {
     const currentStatus = order.status;
     
-    // For delivered orders, only show view details
     if (currentStatus === "Delivered") {
       return (
-        <div className="space-y-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full"
-            onClick={() => setSelectedOrderDetails(order)}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Details
+        <div className="text-center">
+          <Button variant="outline" size="sm" className="w-full" disabled>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Delivered
           </Button>
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-xs md:text-sm text-muted-foreground mt-2">
             Order Completed
           </div>
         </div>
@@ -212,16 +193,16 @@ const IncomingOrders = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              className="w-full"
+              className="w-full h-10 md:h-9"
               onClick={() => setSelectedOrderDetails(order)}
             >
-              <Eye className="h-4 w-4 mr-2" />
+              <Eye className="h-3 w-3 md:h-4 md:w-4 mr-2" />
               View Details
             </Button>
             <Button 
               variant="default" 
               size="sm" 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full h-10 md:h-9 bg-green-600 hover:bg-green-700 text-white"
               onClick={() => handleAcceptOrder(order.id)}
             >
               Accept Order
@@ -231,7 +212,7 @@ const IncomingOrders = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="w-full text-red-600 hover:text-red-700"
+                  className="w-full h-10 md:h-9 text-red-600 hover:text-red-700"
                   onClick={() => setOrderToDecline(order.id)}
                 >
                   Decline Order
@@ -262,16 +243,16 @@ const IncomingOrders = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              className="w-full"
+              className="w-full h-10 md:h-9"
               onClick={() => setSelectedOrderDetails(order)}
             >
-              <Eye className="h-4 w-4 mr-2" />
+              <Eye className="h-3 w-3 md:h-4 md:w-4 mr-2" />
               View Details
             </Button>
             <Button 
               variant="default" 
               size="sm" 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full h-10 md:h-9 bg-green-600 hover:bg-green-700 text-white"
               onClick={() => handleUpdateStatus(order.id, currentStatus)}
             >
               {getNextStatusLabel(currentStatus)}
@@ -284,10 +265,10 @@ const IncomingOrders = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              className="w-full"
+              className="w-full h-10 md:h-9"
               onClick={() => setSelectedOrderDetails(order)}
             >
-              <Eye className="h-4 w-4 mr-2" />
+              <Eye className="h-3 w-3 md:h-4 md:w-4 mr-2" />
               View Details
             </Button>
           </div>
@@ -300,11 +281,11 @@ const IncomingOrders = () => {
     return (
       <>
         {/* Header */}
-        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
           <SidebarTrigger className="mr-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Incoming Orders</h1>
         </header>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin h-8 w-8 border-2 border-supplier-primary border-t-transparent rounded-full"></div>
             <span className="ml-3 text-muted-foreground">Loading orders...</span>
@@ -319,11 +300,11 @@ const IncomingOrders = () => {
     return (
       <>
         {/* Header */}
-        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
           <SidebarTrigger className="mr-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Incoming Orders</h1>
         </header>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <div className="text-center py-8">
             <div className="text-lg text-destructive mb-4">Authentication Error</div>
             <div className="text-sm text-muted-foreground mb-4">{authError}</div>
@@ -339,11 +320,11 @@ const IncomingOrders = () => {
     return (
       <>
         {/* Header */}
-        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
           <SidebarTrigger className="mr-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Incoming Orders</h1>
         </header>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <div className="text-center py-8">
             <div className="text-lg text-destructive mb-4">Not Logged In</div>
             <div className="text-sm text-muted-foreground mb-4">Please log in to access this page.</div>
@@ -357,12 +338,12 @@ const IncomingOrders = () => {
   return (
     <>
       {/* Header */}
-      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
         <SidebarTrigger className="mr-4" />
-        <h1 className="text-2xl font-semibold text-foreground">Incoming Orders</h1>
-        <div className="ml-auto flex items-center gap-4">
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Incoming Orders</h1>
+        <div className="ml-auto flex items-center gap-2 md:gap-4">
           <Select value={orderFilter} onValueChange={setOrderFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-32 md:w-48">
               <SelectValue placeholder="Filter orders" />
             </SelectTrigger>
             <SelectContent>
@@ -372,7 +353,7 @@ const IncomingOrders = () => {
           </Select>
           <div className="flex items-center gap-2">
             {/* Total Orders Badge */}
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="text-xs md:text-sm">
               {orderFilter === 'active' 
                 ? `${filteredOrders.length} active`
                 : `${filteredOrders.length} delivered`
@@ -383,10 +364,10 @@ const IncomingOrders = () => {
       </header>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {/* Section Header */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground">
+        <div className="mb-4 md:mb-6">
+          <h2 className="text-base md:text-lg font-semibold text-foreground">
             {orderFilter === 'active' 
               ? quickFilter 
                 ? `${quickFilter} Orders` 
@@ -394,7 +375,7 @@ const IncomingOrders = () => {
               : 'Delivered Orders'
             }
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-muted-foreground">
             {orderFilter === 'active' 
               ? quickFilter
                 ? `Showing only ${quickFilter.toLowerCase()} orders`
@@ -405,10 +386,10 @@ const IncomingOrders = () => {
           
           {/* Status Summary for Active Orders */}
           {orderFilter === 'active' && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 md:mt-4 flex flex-wrap gap-1 md:gap-2">
               <Badge 
                 variant="outline" 
-                className={`bg-orange-50 text-orange-700 border-orange-200 cursor-pointer transition-colors ${
+                className={`bg-orange-50 text-orange-700 border-orange-200 cursor-pointer transition-colors text-xs md:text-sm ${
                   quickFilter === 'Pending' ? 'ring-2 ring-orange-300 bg-orange-100' : ''
                 }`}
                 onClick={() => setQuickFilter(quickFilter === 'Pending' ? null : 'Pending')}
@@ -418,7 +399,7 @@ const IncomingOrders = () => {
               </Badge>
               <Badge 
                 variant="outline" 
-                className={`bg-yellow-50 text-yellow-700 border-yellow-200 cursor-pointer transition-colors ${
+                className={`bg-yellow-50 text-yellow-700 border-yellow-200 cursor-pointer transition-colors text-xs md:text-sm ${
                   quickFilter === 'Packed' ? 'ring-2 ring-yellow-300 bg-yellow-100' : ''
                 }`}
                 onClick={() => setQuickFilter(quickFilter === 'Packed' ? null : 'Packed')}
@@ -428,7 +409,7 @@ const IncomingOrders = () => {
               </Badge>
               <Badge 
                 variant="outline" 
-                className={`bg-purple-50 text-purple-700 border-purple-200 cursor-pointer transition-colors ${
+                className={`bg-purple-50 text-purple-700 border-purple-200 cursor-pointer transition-colors text-xs md:text-sm ${
                   quickFilter === 'Shipped' ? 'ring-2 ring-purple-300 bg-purple-100' : ''
                 }`}
                 onClick={() => setQuickFilter(quickFilter === 'Shipped' ? null : 'Shipped')}
@@ -438,7 +419,7 @@ const IncomingOrders = () => {
               </Badge>
               <Badge 
                 variant="outline" 
-                className={`bg-blue-50 text-blue-700 border-blue-200 cursor-pointer transition-colors ${
+                className={`bg-blue-50 text-blue-700 border-blue-200 cursor-pointer transition-colors text-xs md:text-sm ${
                   quickFilter === 'Out for Delivery' ? 'ring-2 ring-blue-300 bg-blue-100' : ''
                 }`}
                 onClick={() => setQuickFilter(quickFilter === 'Out for Delivery' ? null : 'Out for Delivery')}
@@ -465,11 +446,11 @@ const IncomingOrders = () => {
         {/* Orders List */}
         {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
-            <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
+            <Package className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg md:text-xl font-semibold mb-2">
               {orderFilter === 'active' ? 'No active orders' : 'No delivered orders'}
             </h2>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-sm md:text-base text-muted-foreground mb-6">
               {orderFilter === 'active' 
                 ? 'Orders with status Pending, Packed, Shipped, or Out for Delivery will appear here.'
                 : 'Completed orders will appear here.'
@@ -477,36 +458,36 @@ const IncomingOrders = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {filteredOrders.map((order) => (
               <Card key={order.id} className="overflow-hidden">
-                <CardHeader className="bg-muted/30">
+                <CardHeader className="bg-muted/30 p-4 md:p-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base md:text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
-                    <Badge className={getStatusColor(order.status)}>
+                    <Badge className={`${getStatusColor(order.status)} text-xs md:text-sm`}>
                       {getStatusIcon(order.status)}
                       <span className="ml-1">{order.status}</span>
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-4 md:p-6">
                   <div className="space-y-4">
                     {/* Order Items */}
                     <div>
-                      <h4 className="font-semibold mb-3">Order Items</h4>
+                      <h4 className="font-semibold mb-3 text-sm md:text-base">Order Items</h4>
                       <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>{order.product?.name || order.product_id || 'Unknown Product'}</span>
-                          <span>{order.quantity} units</span>
+                        <div className="flex justify-between text-xs md:text-sm">
+                          <span className="truncate flex-1 mr-2">{order.product?.name || order.product_id || 'Unknown Product'}</span>
+                          <span className="flex-shrink-0">{order.quantity} units</span>
                         </div>
                       </div>
                       <div className="mt-4 pt-3 border-t">
-                        <div className="flex justify-between font-semibold">
+                        <div className="flex justify-between font-semibold text-sm md:text-base">
                           <span>Total Amount</span>
                           <span className="text-green-600">₹{order.total_amount}</span>
                         </div>
@@ -529,19 +510,19 @@ const IncomingOrders = () => {
 
       {/* Order Details Dialog */}
       <AlertDialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
-        <AlertDialogContent className="max-w-2xl">
+        <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Order Details</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg md:text-xl">Order Details</AlertDialogTitle>
           </AlertDialogHeader>
           {selectedOrderDetails && (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {/* Order Information */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Order Information</h3>
-                <div className="space-y-2 text-sm">
+              <div className="space-y-3 md:space-y-4">
+                <h3 className="font-semibold text-base md:text-lg">Order Information</h3>
+                <div className="space-y-2 text-xs md:text-sm">
                   <div>
                     <span className="font-medium">Order ID:</span>
-                    <div className="text-muted-foreground">{selectedOrderDetails.id}</div>
+                    <div className="text-muted-foreground break-all">{selectedOrderDetails.id}</div>
                   </div>
                   <div>
                     <span className="font-medium">Status:</span>
@@ -555,12 +536,12 @@ const IncomingOrders = () => {
               </div>
 
               {/* Product Information */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Product Information</h3>
-                <div className="space-y-2 text-sm">
+              <div className="space-y-3 md:space-y-4">
+                <h3 className="font-semibold text-base md:text-lg">Product Information</h3>
+                <div className="space-y-2 text-xs md:text-sm">
                   <div>
                     <span className="font-medium">Product Name:</span>
-                    <div className="text-muted-foreground">{selectedOrderDetails.product?.name || selectedOrderDetails.product_id || 'Unknown'}</div>
+                    <div className="text-muted-foreground break-words">{selectedOrderDetails.product?.name || selectedOrderDetails.product_id || 'Unknown'}</div>
                   </div>
                   <div>
                     <span className="font-medium">Quantity:</span>
@@ -570,24 +551,24 @@ const IncomingOrders = () => {
               </div>
 
               {/* Vendor Information */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Building className="h-5 w-5" />
+              <div className="space-y-3 md:space-y-4">
+                <h3 className="font-semibold text-base md:text-lg flex items-center gap-2">
+                  <Building className="h-4 w-4 md:h-5 md:w-5" />
                   Vendor Information
                 </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <div>
+                <div className="space-y-3 text-xs md:text-sm">
+                  <div className="flex items-start gap-2">
+                    <Building className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 min-w-0">
                       <span className="font-medium">Business Name:</span>
-                      <div className="text-muted-foreground">{selectedOrderDetails.vendor?.business_name || selectedOrderDetails.vendor?.name || 'N/A'}</div>
+                      <div className="text-muted-foreground break-words">{selectedOrderDetails.vendor?.business_name || selectedOrderDetails.vendor?.name || 'N/A'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div>
+                  <div className="flex items-start gap-2">
+                    <Mail className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 min-w-0">
                       <span className="font-medium">Email:</span>
-                      <div className="text-muted-foreground">{selectedOrderDetails.vendor?.email || 'N/A'}</div>
+                      <div className="text-muted-foreground break-all">{selectedOrderDetails.vendor?.email || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
@@ -595,7 +576,7 @@ const IncomingOrders = () => {
             </div>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Close</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 md:h-9">Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

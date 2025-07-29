@@ -177,35 +177,31 @@ const MyOrders = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <VendorSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-2xl font-semibold text-foreground">My Orders</h1>
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log('🔄 MyOrders: Manual refresh triggered');
-                  refetch();
-                }}
-                disabled={loading}
-              >
-                Refresh
-              </Button>
-              <Badge variant="secondary">
-                {filteredOrders.length} orders
-              </Badge>
-            </div>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+        <SidebarTrigger className="mr-4" />
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">My Orders</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              console.log('🔄 MyOrders: Manual refresh triggered');
+              refetch();
+            }}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+          <Badge variant="secondary">
+            {filteredOrders.length} orders
+          </Badge>
+        </div>
+      </header>
 
-          {/* Content */}
-          <div className="p-6">
+      {/* Content */}
+      <div className="p-4 md:p-6">
 
             
             {/* Filter Dropdown - Always visible */}
@@ -450,8 +446,6 @@ const MyOrders = () => {
                 )}
             </div>
           </div>
-        </main>
-      </div>
 
       {/* Order Details Dialog */}
       <AlertDialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
@@ -651,7 +645,7 @@ const MyOrders = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </SidebarProvider>
+    </>
   );
 };
 

@@ -402,19 +402,15 @@ const CompareSuppliers = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <VendorSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-2xl font-semibold text-foreground">Compare Suppliers</h1>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+        <SidebarTrigger className="mr-4" />
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Compare Suppliers</h1>
+      </header>
 
-          {/* Content */}
-          <div className="p-6 space-y-8">
+      {/* Content */}
+      <div className="p-4 md:p-6 space-y-4 md:space-y-8">
             {/* Product Selection */}
             <Card>
               <CardHeader>
@@ -560,10 +556,8 @@ const CompareSuppliers = () => {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
+        </>
+      );
 };
 
 export default CompareSuppliers;
