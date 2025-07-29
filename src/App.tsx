@@ -28,6 +28,7 @@ import SupplierReviews from "./pages/supplier/SupplierReviews";
 import SupplierAccountSettings from "./pages/supplier/AccountSettings";
 import DebugAuth from "./pages/supplier/DebugAuth";
 import { SupplierLayout } from "@/components/SupplierLayout";
+import { VendorLayout } from "@/components/VendorLayout";
 import { useAuth } from '@/hooks/useAuth';
 import { CartProvider } from '@/contexts/CartContext';
 
@@ -122,15 +123,13 @@ function AppRoutes() {
       <Route path="/debug-auth" element={<DebugAuth />} />
       <Route path="/vendor-login" element={user && role === 'vendor' ? <Navigate to="/vendor/dashboard" /> : <VendorLogin />} />
       <Route path="/supplier-login" element={user && role === 'supplier' ? <Navigate to="/supplier/dashboard" /> : <SupplierLogin />} />
-      <Route element={<ProtectedRoute role="vendor" />}> 
-        <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-        <Route path="/vendor/browse" element={<BrowseProducts />} />
-        <Route path="/vendor/cart" element={<Cart />} />
-        <Route path="/vendor/orders" element={<MyOrders />} />
-        <Route path="/vendor/compare" element={<CompareSuppliers />} />
-        <Route path="/vendor/reviews" element={<VendorReviews />} />
-        <Route path="/vendor/account" element={<VendorAccountSettings />} />
-      </Route>
+      <Route path="/vendor/dashboard" element={<VendorLayout><VendorDashboard /></VendorLayout>} />
+      <Route path="/vendor/browse" element={<VendorLayout><BrowseProducts /></VendorLayout>} />
+      <Route path="/vendor/cart" element={<VendorLayout><Cart /></VendorLayout>} />
+      <Route path="/vendor/orders" element={<VendorLayout><MyOrders /></VendorLayout>} />
+      <Route path="/vendor/compare" element={<VendorLayout><CompareSuppliers /></VendorLayout>} />
+      <Route path="/vendor/reviews" element={<VendorLayout><VendorReviews /></VendorLayout>} />
+      <Route path="/vendor/account" element={<VendorLayout><VendorAccountSettings /></VendorLayout>} />
       <Route path="/supplier/dashboard" element={<SupplierLayout><SupplierDashboard /></SupplierLayout>} />
       <Route path="/supplier/products" element={<SupplierLayout><MyProducts /></SupplierLayout>} />
       <Route path="/supplier/add-product" element={<SupplierLayout><AddProduct /></SupplierLayout>} />

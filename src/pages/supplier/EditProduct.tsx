@@ -13,10 +13,12 @@ import { useSupplierProducts } from "@/hooks/useSupplierProducts";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const EditProduct = () => {
   const navigate = useNavigate();
   const { user, role, loading: authLoading } = useAuth();
+  const isMobile = useIsMobile();
   const { productId } = useParams<{ productId: string }>();
   const [loading, setLoading] = useState(false);
   
@@ -99,211 +101,218 @@ const EditProduct = () => {
         category: formData.category,
         image_url: imageUrl || null
       };
-      
+
       const success = await updateProduct(productId, updateData);
-      
       if (success) {
-        toast.success("Product updated successfully");
+        toast.success('Product updated successfully!');
         navigate('/supplier/products');
       } else {
-        toast.error("Failed to update product");
+        toast.error('Failed to update product.');
       }
     } catch (err) {
-      toast.error("An error occurred while updating the product");
-      console.error(err);
+      toast.error('Unexpected error occurred.');
+      console.error('Update product error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  if (authLoading) {
+    return (
+      <>
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Edit Product</h1>
+        </header>
+        <div className="p-4 md:p-6">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-3 text-muted-foreground">Loading...</span>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (!product) {
     return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <SupplierSidebar />
-          <main className="flex-1 bg-background">
-            <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-              <SidebarTrigger className="mr-4" />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/supplier/products')}
-                className="mr-4"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <h1 className="text-2xl font-semibold text-foreground">Edit Product</h1>
-            </header>
-            <div className="p-6">
-              <div className="text-center py-8">
-                <div className="text-lg text-destructive mb-4">Product not found</div>
-                <Button onClick={() => navigate('/supplier/products')}>Back to Products</Button>
-              </div>
-            </div>
-          </main>
+      <>
+        <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+          <SidebarTrigger className="mr-4" />
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Edit Product</h1>
+        </header>
+        <div className="p-4 md:p-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-destructive mb-4">Product not found</div>
+            <Button onClick={() => navigate('/supplier/products')}>Back to Products</Button>
+          </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <SupplierSidebar />
-        
-        <main className="flex-1 bg-background">
-          {/* Header */}
-          <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-6">
-            <SidebarTrigger className="mr-4" />
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/supplier/products')}
-              className="mr-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-semibold text-foreground">Edit Product</h1>
-          </header>
+    <>
+      {/* Header */}
+      <header className="h-16 flex items-center border-b bg-card/50 backdrop-blur-sm px-4 md:px-6">
+        <SidebarTrigger className="mr-4" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/supplier/products')}
+          className="mr-2 md:mr-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          {isMobile ? "Back" : "Back to Products"}
+        </Button>
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Edit Product</h1>
+      </header>
 
-          {/* Content */}
-          <div className="p-6">
-            <form onSubmit={handleSubmit}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-supplier-primary">Product Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
+      {/* Content */}
+      <div className="p-4 md:p-6">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="pb-4 md:pb-6">
+              <CardTitle className="text-lg md:text-xl text-supplier-primary">Edit Product Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+                {/* Product Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm md:text-base">Product Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Fresh Red Onions"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    required
+                    className="h-10 md:h-10"
+                  />
+                </div>
+
+                {/* Category and Price */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Product Name</Label>
+                    <Label htmlFor="category" className="text-sm md:text-base">Category *</Label>
+                    <Select 
+                      value={formData.category} 
+                      onValueChange={(value) => handleInputChange("category", value)}
+                    >
+                      <SelectTrigger className="h-10 md:h-10">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vegetables">Vegetables</SelectItem>
+                        <SelectItem value="grains">Grains</SelectItem>
+                        <SelectItem value="pulses">Pulses</SelectItem>
+                        <SelectItem value="spices">Spices</SelectItem>
+                        <SelectItem value="oils">Oils</SelectItem>
+                        <SelectItem value="dairy">Dairy</SelectItem>
+                        <SelectItem value="fruits">Fruits</SelectItem>
+                        <SelectItem value="others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-sm md:text-base">Price per Unit (₹) *</Label>
                     <Input
-                      id="name"
-                      value={formData.name}
-                      disabled
-                      className="bg-muted"
+                      id="price"
+                      type="number"
+                      placeholder="0.00"
+                      value={formData.price}
+                      onChange={(e) => handleInputChange("price", e.target.value)}
+                      required
+                      className="h-10 md:h-10"
                     />
-                    <p className="text-xs text-muted-foreground">Product name cannot be changed</p>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="price">Price (₹) *</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.price}
-                        onChange={(e) => handleInputChange("price", e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="stock">Stock Quantity *</Label>
-                      <Input
-                        id="stock"
-                        type="number"
-                        min="0"
-                        value={formData.stock}
-                        onChange={(e) => handleInputChange("stock", e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
+                {/* Stock */}
+                <div className="space-y-2">
+                  <Label htmlFor="stock" className="text-sm md:text-base">Available Quantity *</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    placeholder="0"
+                    value={formData.stock}
+                    onChange={(e) => handleInputChange("stock", e.target.value)}
+                    required
+                    className="h-10 md:h-10"
+                  />
+                </div>
 
+                {/* Current Image */}
+                {formData.image_url && (
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Input
-                      id="category"
-                      value={formData.category}
-                      disabled
-                      className="bg-muted"
+                    <Label className="text-sm md:text-base">Current Image</Label>
+                    <div className="flex items-center space-x-4">
+                      <img 
+                        src={formData.image_url} 
+                        alt="Current product" 
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <span className="text-xs md:text-sm text-muted-foreground">
+                        Current product image
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Image Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="image" className="text-sm md:text-base">Update Product Image</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 md:p-6 text-center hover:border-supplier-primary/50 transition-colors">
+                    <input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
                     />
-                    <p className="text-xs text-muted-foreground">Category cannot be changed</p>
-                  </div>
-
-                  {/* Image Upload */}
-                  <div className="space-y-2">
-                    <Label htmlFor="image">Product Image</Label>
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-supplier-primary/50 transition-colors">
-                      <input
-                        id="image"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                      <label htmlFor="image" className="cursor-pointer">
-                        <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload new product image
+                    <label htmlFor="image" className="cursor-pointer">
+                      <Upload className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-xs md:text-sm text-muted-foreground">
+                        Click to upload new image
+                      </p>
+                      {formData.image && (
+                        <p className="text-xs md:text-sm text-supplier-primary mt-2 truncate">
+                          {formData.image.name}
                         </p>
-                        {formData.image && (
-                          <p className="text-sm text-supplier-primary mt-2">
-                            {formData.image.name}
-                          </p>
-                        )}
-                        {formData.image_url && !formData.image && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Current image: {formData.image_url}
-                          </p>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Current Image URL (for reference) */}
-                  {formData.image_url && (
-                    <div className="space-y-2">
-                      <Label htmlFor="image_url">Current Image URL</Label>
-                      <Input
-                        id="image_url"
-                        type="url"
-                        value={formData.image_url}
-                        onChange={(e) => handleInputChange("image_url", e.target.value)}
-                        placeholder="https://example.com/image.jpg"
-                      />
-                      <p className="text-xs text-muted-foreground">You can also update the image URL directly</p>
-                    </div>
-                  )}
-
-                  <div className="flex gap-4 pt-4">
-                    <Button 
-                      type="submit" 
-                      variant="supplier" 
-                      className="flex-1"
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Update Product
-                        </>
                       )}
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => navigate('/supplier/products')}
-                      disabled={loading}
-                    >
-                      Cancel
-                    </Button>
+                    </label>
                   </div>
-                </CardContent>
-              </Card>
-            </form>
-          </div>
-        </main>
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4 md:pt-6">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1 h-10 md:h-10"
+                    onClick={() => navigate('/supplier/products')}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    variant="supplier" 
+                    className="flex-1 h-10 md:h-10"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center"><Save className="mr-2 h-4 w-4 animate-spin" />Updating...</span>
+                    ) : (
+                      <span className="flex items-center"><Save className="mr-2 h-4 w-4" />Update Product</span>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </SidebarProvider>
+    </>
   );
 };
 
