@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, Package, Info, Mail, LogOut, SidebarTrigger } from 'lucide-react';
+import { Home, Search, ShoppingCart, Package, Info, Mail, LogOut } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +26,6 @@ const menuItems = [
 export function ConsumerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { collapsed } = useSidebar();
   const { toast } = useToast();
 
   const handleLogout = async () => {
@@ -50,7 +49,7 @@ export function ConsumerSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible>
+    <Sidebar className="w-60">
       <SidebarTrigger className="m-2 self-end" />
       
       <SidebarContent>
@@ -65,14 +64,14 @@ export function ConsumerSidebar() {
                     className={isActive(item.url) ? "bg-muted text-primary font-medium" : "hover:bg-muted/50"}
                   >
                     <item.icon className="mr-2 h-4 w-4" />
-                    {!collapsed && <span>{item.title}</span>}
+                    <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  {!collapsed && <span>Logout</span>}
+                  <span>Logout</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

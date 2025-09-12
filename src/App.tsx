@@ -11,28 +11,13 @@ import ConsumerLogin from '@/pages/ConsumerLogin';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-// Vendor Pages
-import VendorDashboard from "./pages/vendor/VendorDashboard";
-import BrowseProducts from "./pages/vendor/BrowseProducts";
-import Cart from "./pages/vendor/Cart";
-import MyOrders from "./pages/vendor/MyOrders";
-import CompareSuppliers from "./pages/vendor/CompareSuppliers";
-import VendorReviews from "./pages/vendor/VendorReviews";
-import VendorAccountSettings from "./pages/vendor/AccountSettings";
-
-// Supplier Pages
-import SupplierDashboard from "./pages/supplier/SupplierDashboard";
-import MyProducts from "./pages/supplier/MyProducts";
-import AddProduct from "./pages/supplier/AddProduct";
-import EditProduct from "./pages/supplier/EditProduct";
-import IncomingOrders from "./pages/supplier/IncomingOrders";
-import SupplierReviews from "./pages/supplier/SupplierReviews";
-import SupplierAccountSettings from "./pages/supplier/AccountSettings";
-import DebugAuth from "./pages/supplier/DebugAuth";
-import { SupplierLayout } from "@/components/SupplierLayout";
-import { VendorLayout } from "@/components/VendorLayout";
+// New Role Pages
+import FarmerDashboard from "./pages/farmer/FarmerDashboard";
+import { FarmerLayout } from "@/components/FarmerLayout";
+import { DistributorLayout } from "@/components/DistributorLayout";
+import { RetailerLayout } from "@/components/RetailerLayout";
+import { ConsumerLayout } from "@/components/ConsumerLayout";
 import { useAuth } from '@/hooks/useAuth';
-import { CartProvider } from '@/contexts/CartContext';
 
 const queryClient = new QueryClient();
 
@@ -122,23 +107,14 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Welcome />} />
       <Route path="/test" element={<TestComponent />} />
-      <Route path="/debug-auth" element={<DebugAuth />} />
-      <Route path="/vendor-login" element={user && role === 'vendor' ? <Navigate to="/vendor/dashboard" /> : <VendorLogin />} />
-      <Route path="/supplier-login" element={user && role === 'supplier' ? <Navigate to="/supplier/dashboard" /> : <SupplierLogin />} />
-      <Route path="/vendor/dashboard" element={<VendorLayout><VendorDashboard /></VendorLayout>} />
-      <Route path="/vendor/browse" element={<VendorLayout><BrowseProducts /></VendorLayout>} />
-      <Route path="/vendor/cart" element={<VendorLayout><Cart /></VendorLayout>} />
-      <Route path="/vendor/orders" element={<VendorLayout><MyOrders /></VendorLayout>} />
-      <Route path="/vendor/compare" element={<VendorLayout><CompareSuppliers /></VendorLayout>} />
-      <Route path="/vendor/reviews" element={<VendorLayout><VendorReviews /></VendorLayout>} />
-      <Route path="/vendor/account" element={<VendorLayout><VendorAccountSettings /></VendorLayout>} />
-      <Route path="/supplier/dashboard" element={<SupplierLayout><SupplierDashboard /></SupplierLayout>} />
-      <Route path="/supplier/products" element={<SupplierLayout><MyProducts /></SupplierLayout>} />
-      <Route path="/supplier/add-product" element={<SupplierLayout><AddProduct /></SupplierLayout>} />
-      <Route path="/supplier/edit-product/:productId" element={<SupplierLayout><EditProduct /></SupplierLayout>} />
-      <Route path="/supplier/orders" element={<SupplierLayout><IncomingOrders /></SupplierLayout>} />
-      <Route path="/supplier/reviews" element={<SupplierLayout><SupplierReviews /></SupplierLayout>} />
-      <Route path="/supplier/settings" element={<SupplierLayout><SupplierAccountSettings /></SupplierLayout>} />
+      
+      <Route path="/farmer-login" element={user && role === 'farmer' ? <Navigate to="/farmer/dashboard" /> : <FarmerLogin />} />
+      <Route path="/distributor-login" element={user && role === 'distributor' ? <Navigate to="/distributor/dashboard" /> : <DistributorLogin />} />
+      <Route path="/retailer-login" element={user && role === 'retailer' ? <Navigate to="/retailer/dashboard" /> : <RetailerLogin />} />
+      <Route path="/consumer-login" element={user && role === 'consumer' ? <Navigate to="/consumer/home" /> : <ConsumerLogin />} />
+      
+      <Route path="/farmer/dashboard" element={<FarmerLayout><FarmerDashboard /></FarmerLayout>} />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -149,9 +125,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Router>
-          <CartProvider>
-            <AppRoutes />
-          </CartProvider>
+          <AppRoutes />
           <Toaster />
           <Sonner />
         </Router>
