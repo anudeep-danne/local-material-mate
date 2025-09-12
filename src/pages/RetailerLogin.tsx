@@ -58,14 +58,26 @@ export default function RetailerLogin() {
 
           if (userError) throw userError;
 
-          if (userData.role === 'retailer') {
+          const role = userData?.role as string | undefined;
+          const roleRoutes: Record<string, string> = {
+            farmer: '/farmer/dashboard',
+            vendor: '/vendor/dashboard',
+            distributor: '/distributor/dashboard',
+            retailer: '/retailer/dashboard',
+            consumer: '/consumer/home',
+          };
+
+          if (role === 'retailer') {
             navigate('/retailer/dashboard');
+            toast({ title: 'Welcome back!', description: 'Successfully logged in as retailer.' });
+          } else if (role && roleRoutes[role]) {
             toast({
-              title: "Welcome back!",
-              description: "Successfully logged in as retailer.",
+              title: 'Redirecting to your dashboard',
+              description: `You are registered as ${role}.`,
             });
+            navigate(roleRoutes[role]);
           } else {
-            throw new Error('Access denied. This account is not registered as a retailer.');
+            throw new Error('Account role is not set. Please contact support.');
           }
         }
       }

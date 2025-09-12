@@ -58,14 +58,26 @@ export default function DistributorLogin() {
 
           if (userError) throw userError;
 
-          if (userData.role === 'distributor') {
+          const role = userData?.role as string | undefined;
+          const roleRoutes: Record<string, string> = {
+            farmer: '/farmer/dashboard',
+            vendor: '/vendor/dashboard',
+            distributor: '/distributor/dashboard',
+            retailer: '/retailer/dashboard',
+            consumer: '/consumer/home',
+          };
+
+          if (role === 'distributor') {
             navigate('/distributor/dashboard');
+            toast({ title: 'Welcome back!', description: 'Successfully logged in as distributor.' });
+          } else if (role && roleRoutes[role]) {
             toast({
-              title: "Welcome back!",
-              description: "Successfully logged in as distributor.",
+              title: 'Redirecting to your dashboard',
+              description: `You are registered as ${role}.`,
             });
+            navigate(roleRoutes[role]);
           } else {
-            throw new Error('Access denied. This account is not registered as a distributor.');
+            throw new Error('Account role is not set. Please contact support.');
           }
         }
       }
