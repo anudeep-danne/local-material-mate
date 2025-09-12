@@ -134,13 +134,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CartProvider>
-          <Router>
+        <Router>
+          <CartProvider>
             <AppRoutes />
             <Toaster />
             <Sonner />
-          </Router>
-        </CartProvider>
+          </CartProvider>
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   );
