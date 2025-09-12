@@ -9,11 +9,11 @@ export const useDashboard = (userId?: string, userRole?: string) => {
     pendingOrders: 0,
     averageRating: 0,
     totalReviews: 0,
-    monthlyRevenue: [],
+    monthlyRevenue: 0,
     recentActivity: [],
     topProducts: [],
     activeOrders: 0,
-    monthlySpend: [],
+    monthlySpend: 0,
     topSuppliers: []
   });
   const [loading, setLoading] = useState(false);

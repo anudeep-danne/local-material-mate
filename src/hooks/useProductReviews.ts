@@ -6,7 +6,7 @@ export const useProductReviews = (userId?: string, userRole?: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getProductRating = (productId: string) => {
+  const getProductRating = (productId: string, supplierId?: string) => {
     return { averageRating: 0, totalReviews: 0 };
   };
 

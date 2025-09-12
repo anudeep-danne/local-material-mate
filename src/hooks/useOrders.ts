@@ -14,8 +14,8 @@ export const useOrders = (userId?: string, userRole?: string) => {
     return { success: false, error: 'Not implemented in new system' };
   };
 
-  const placeOrder = async (cartItems: any, address: any) => {
-    return { success: false, error: 'Not implemented in new system' };
+  const placeOrder = async (cartItems: any) => {
+    return false;
   };
 
   const cancelOrder = async (orderId: string) => {
