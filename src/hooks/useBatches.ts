@@ -47,7 +47,7 @@ export const useBatches = (userId?: string) => {
         .insert({
           ...batchData,
           farmer_id: user.id,
-          remaining_quantity: batchData.quantity
+          available_quantity_kg: batchData.total_quantity_kg
         })
         .select()
         .single();

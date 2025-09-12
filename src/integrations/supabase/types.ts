@@ -16,40 +16,46 @@ export type Database = {
     Tables: {
       batches: {
         Row: {
-          created_at: string
-          crop_type: string
+          available_quantity_kg: number
+          created_at: string | null
+          crop: string
           farmer_id: string
           harvest_date: string
           id: string
+          location: string
+          metadata_json: Json | null
+          parent_batch_id: string | null
           price_per_kg: number
-          quantity: number
-          remaining_quantity: number
           status: string
-          updated_at: string
+          total_quantity_kg: number
         }
         Insert: {
-          created_at?: string
-          crop_type: string
+          available_quantity_kg: number
+          created_at?: string | null
+          crop: string
           farmer_id: string
           harvest_date: string
           id?: string
+          location: string
+          metadata_json?: Json | null
+          parent_batch_id?: string | null
           price_per_kg: number
-          quantity: number
-          remaining_quantity: number
           status?: string
-          updated_at?: string
+          total_quantity_kg: number
         }
         Update: {
-          created_at?: string
-          crop_type?: string
+          available_quantity_kg?: number
+          created_at?: string | null
+          crop?: string
           farmer_id?: string
           harvest_date?: string
           id?: string
+          location?: string
+          metadata_json?: Json | null
+          parent_batch_id?: string | null
           price_per_kg?: number
-          quantity?: number
-          remaining_quantity?: number
           status?: string
-          updated_at?: string
+          total_quantity_kg?: number
         }
         Relationships: [
           {
@@ -57,6 +63,13 @@ export type Database = {
             columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_parent_batch_id_fkey"
+            columns: ["parent_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
             referencedColumns: ["id"]
           },
         ]
@@ -178,148 +191,184 @@ export type Database = {
           },
         ]
       }
-      offers: {
+      inventory: {
         Row: {
-          batch_id: string
-          created_at: string
-          distributor_id: string
-          expires_at: string | null
-          farmer_id: string
+          created_at: string | null
+          expiry_date: string | null
           id: string
-          notes: string | null
-          offered_price_per_kg: number
-          quantity: number
-          status: string
-          total_offer_amount: number
-          updated_at: string
+          quantity_available: number
+          retail_price_per_kg: number
+          retailer_id: string
+          source_batch_id: string
         }
         Insert: {
-          batch_id: string
-          created_at?: string
-          distributor_id: string
-          expires_at?: string | null
-          farmer_id: string
+          created_at?: string | null
+          expiry_date?: string | null
           id?: string
-          notes?: string | null
-          offered_price_per_kg: number
-          quantity: number
-          status?: string
-          total_offer_amount: number
-          updated_at?: string
+          quantity_available: number
+          retail_price_per_kg: number
+          retailer_id: string
+          source_batch_id: string
         }
         Update: {
-          batch_id?: string
-          created_at?: string
-          distributor_id?: string
-          expires_at?: string | null
-          farmer_id?: string
+          created_at?: string | null
+          expiry_date?: string | null
           id?: string
-          notes?: string | null
-          offered_price_per_kg?: number
-          quantity?: number
-          status?: string
-          total_offer_amount?: number
-          updated_at?: string
+          quantity_available?: number
+          retail_price_per_kg?: number
+          retailer_id?: string
+          source_batch_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "offers_batch_id_fkey"
+            foreignKeyName: "inventory_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_source_batch_id_fkey"
+            columns: ["source_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          created_at: string | null
+          id: string
+          maker_id: string
+          price_offered: number
+          qty_offered: number
+          status: string
+          target_batch_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          maker_id: string
+          price_offered: number
+          qty_offered: number
+          status?: string
+          target_batch_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          maker_id?: string
+          price_offered?: number
+          qty_offered?: number
+          status?: string
+          target_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_maker_id_fkey"
+            columns: ["maker_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_target_batch_id_fkey"
+            columns: ["target_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          batch_id: string
+          id: string
+          inventory_id: string
+          order_id: string
+          price_per_kg: number
+          quantity: number
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          inventory_id: string
+          order_id: string
+          price_per_kg: number
+          quantity: number
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          inventory_id?: string
+          order_id?: string
+          price_per_kg?: number
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "batches"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "offers_distributor_id_fkey"
-            columns: ["distributor_id"]
+            foreignKeyName: "order_items_inventory_id_fkey"
+            columns: ["inventory_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "offers_farmer_id_fkey"
-            columns: ["farmer_id"]
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
       }
       orders: {
         Row: {
-          accepted_by: string | null
-          cancelled_by: string | null
-          created_at: string
+          address_json: Json
+          consumer_id: string
+          created_at: string | null
           id: string
-          product_id: string
-          quantity: number
+          retailer_id: string
           status: string
-          stock_updated: boolean
-          supplier_id: string
           total_amount: number
-          updated_at: string
-          vendor_id: string
         }
         Insert: {
-          accepted_by?: string | null
-          cancelled_by?: string | null
-          created_at?: string
+          address_json?: Json
+          consumer_id: string
+          created_at?: string | null
           id?: string
-          product_id: string
-          quantity?: number
+          retailer_id: string
           status?: string
-          stock_updated?: boolean
-          supplier_id: string
           total_amount: number
-          updated_at?: string
-          vendor_id: string
         }
         Update: {
-          accepted_by?: string | null
-          cancelled_by?: string | null
-          created_at?: string
+          address_json?: Json
+          consumer_id?: string
+          created_at?: string | null
           id?: string
-          product_id?: string
-          quantity?: number
+          retailer_id?: string
           status?: string
-          stock_updated?: boolean
-          supplier_id?: string
           total_amount?: number
-          updated_at?: string
-          vendor_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_supplier_id_fkey"
-            columns: ["supplier_id"]
+            foreignKeyName: "orders_consumer_id_fkey"
+            columns: ["consumer_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "orders_vendor_id_fkey"
-            columns: ["vendor_id"]
+            foreignKeyName: "orders_retailer_id_fkey"
+            columns: ["retailer_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -406,13 +455,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "retailer_inventory_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "retailer_inventory_retailer_id_fkey"
             columns: ["retailer_id"]
             isOneToOne: false
@@ -424,63 +466,39 @@ export type Database = {
       reviews: {
         Row: {
           comment: string | null
-          created_at: string
+          created_at: string | null
+          from_user_id: string
           id: string
-          order_id: string
           rating: number
-          supplier_id: string
-          vendor_id: string
+          to_user_id: string
         }
         Insert: {
           comment?: string | null
-          created_at?: string
+          created_at?: string | null
+          from_user_id: string
           id?: string
-          order_id: string
           rating: number
-          supplier_id: string
-          vendor_id: string
+          to_user_id: string
         }
         Update: {
           comment?: string | null
-          created_at?: string
+          created_at?: string | null
+          from_user_id?: string
           id?: string
-          order_id?: string
           rating?: number
-          supplier_id?: string
-          vendor_id?: string
+          to_user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "reviews_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "clean_vendor_orders"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "reviews_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_vendor_display"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "reviews_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_supplier_id_fkey"
-            columns: ["supplier_id"]
+            foreignKeyName: "reviews_from_user_id_fkey"
+            columns: ["from_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reviews_vendor_id_fkey"
-            columns: ["vendor_id"]
+            foreignKeyName: "reviews_to_user_id_fkey"
+            columns: ["to_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -541,13 +559,6 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "shipments_transfer_id_fkey"
-            columns: ["transfer_id"]
-            isOneToOne: false
-            referencedRelation: "transfers"
-            referencedColumns: ["id"]
-          },
         ]
       }
       stock_changes: {
@@ -582,27 +593,6 @@ export type Database = {
           product_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "stock_changes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "clean_vendor_orders"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "stock_changes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_vendor_display"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "stock_changes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "stock_changes_product_id_fkey"
             columns: ["product_id"]
@@ -664,45 +654,36 @@ export type Database = {
       transfers: {
         Row: {
           batch_id: string
-          created_at: string
+          created_at: string | null
           from_user_id: string
           id: string
           notes: string | null
-          price_per_kg: number
-          quantity: number
+          quantity_kg: number
           status: string
           to_user_id: string
-          total_amount: number
           transfer_type: string
-          updated_at: string
         }
         Insert: {
           batch_id: string
-          created_at?: string
+          created_at?: string | null
           from_user_id: string
           id?: string
           notes?: string | null
-          price_per_kg: number
-          quantity: number
+          quantity_kg: number
           status?: string
           to_user_id: string
-          total_amount: number
           transfer_type: string
-          updated_at?: string
         }
         Update: {
           batch_id?: string
-          created_at?: string
+          created_at?: string | null
           from_user_id?: string
           id?: string
           notes?: string | null
-          price_per_kg?: number
-          quantity?: number
+          quantity_kg?: number
           status?: string
           to_user_id?: string
-          total_amount?: number
           transfer_type?: string
-          updated_at?: string
         }
         Relationships: [
           {
@@ -746,6 +727,7 @@ export type Database = {
           name: string
           phone: string | null
           pincode: string | null
+          profile_json: Json | null
           role: string
           state: string | null
         }
@@ -766,6 +748,7 @@ export type Database = {
           name: string
           phone?: string | null
           pincode?: string | null
+          profile_json?: Json | null
           role: string
           state?: string | null
         }
@@ -786,6 +769,7 @@ export type Database = {
           name?: string
           phone?: string | null
           pincode?: string | null
+          profile_json?: Json | null
           role?: string
           state?: string | null
         }
@@ -837,127 +821,6 @@ export type Database = {
           },
           {
             foreignKeyName: "cart_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      clean_vendor_orders: {
-        Row: {
-          order_created_at: string | null
-          order_id: string | null
-          product_id: string | null
-          product_name: string | null
-          product_price: number | null
-          quantity: number | null
-          status: string | null
-          supplier_business_name: string | null
-          supplier_id: string | null
-          supplier_name: string | null
-          total_amount: number | null
-          vendor_address: string | null
-          vendor_business_name: string | null
-          vendor_city: string | null
-          vendor_email: string | null
-          vendor_id: string | null
-          vendor_name: string | null
-          vendor_phone: string | null
-          vendor_state: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      order_vendor_display: {
-        Row: {
-          order_created_at: string | null
-          order_id: string | null
-          product_id: string | null
-          quantity: number | null
-          status: string | null
-          supplier_id: string | null
-          total_amount: number | null
-          vendor_address: string | null
-          vendor_business_name: string | null
-          vendor_city: string | null
-          vendor_created_at: string | null
-          vendor_display_location: string | null
-          vendor_display_name: string | null
-          vendor_display_phone: string | null
-          vendor_email: string | null
-          vendor_id: string | null
-          vendor_name: string | null
-          vendor_phone: string | null
-          vendor_pincode: string | null
-          vendor_state: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1029,6 +892,24 @@ export type Database = {
       add_to_cart_safe_v2: {
         Args: { p_product_id: string; p_quantity?: number; p_vendor_id: string }
         Returns: string
+      }
+      buy_batch: {
+        Args: {
+          p_batch_id: string
+          p_buyer_id: string
+          p_price_offered: number
+          p_quantity: number
+        }
+        Returns: Json
+      }
+      create_order: {
+        Args: {
+          p_address: Json
+          p_consumer_id: string
+          p_items: Json
+          p_retailer_id: string
+        }
+        Returns: Json
       }
       delete_product_safe: {
         Args: { product_id: string; supplier_id: string }
@@ -1127,6 +1008,16 @@ export type Database = {
       restore_product_stock: {
         Args: { p_product_id: string; p_quantity: number }
         Returns: boolean
+      }
+      sell_to_retailer: {
+        Args: {
+          p_batch_id: string
+          p_price_per_kg: number
+          p_quantity: number
+          p_retailer_id: string
+          p_seller_id: string
+        }
+        Returns: Json
       }
       update_cart_quantity_safe: {
         Args: { p_cart_item_id: string; p_quantity: number }
