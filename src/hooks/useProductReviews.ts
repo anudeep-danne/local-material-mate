@@ -7,7 +7,7 @@ export const useProductReviews = (userId?: string, userRole?: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const getProductRating = (productId: string) => {
-    return 0;
+    return { averageRating: 0, totalReviews: 0 };
   };
 
   const submitReview = async (reviewData: any) => {

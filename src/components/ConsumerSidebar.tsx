@@ -16,9 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 
 const menuItems = [
   { title: 'Home', url: '/consumer/home', icon: Home },
+  { title: 'Buy Products', url: '/consumer/buy', icon: ShoppingCart },
   { title: 'Trace Produce', url: '/consumer/trace', icon: Search },
-  { title: 'Buy Products Online', url: '/consumer/shop', icon: ShoppingCart },
-  { title: 'My Orders', url: '/consumer/orders', icon: Package },
   { title: 'About', url: '/consumer/about', icon: Info },
   { title: 'Contact', url: '/consumer/contact', icon: Mail },
 ];
