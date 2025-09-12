@@ -16,16 +16,16 @@ const Welcome = () => {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
           <Button asChild size="lg" className="w-full sm:w-auto">
-            <Link to="/farmer-login">Get Started as Farmer</Link>
+            <Link to="/farmer/dashboard">Get Started as Farmer</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-            <Link to="/distributor-login">Get Started as Distributor</Link>
+            <Link to="/distributor/dashboard">Get Started as Distributor</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-            <Link to="/retailer-login">Get Started as Retailer</Link>
+            <Link to="/retailer/dashboard">Get Started as Retailer</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-            <Link to="/consumer-login">Get Started as Consumer</Link>
+            <Link to="/consumer/home">Get Started as Consumer</Link>
           </Button>
         </div>
 
