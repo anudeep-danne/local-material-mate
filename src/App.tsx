@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { CartProvider } from "@/contexts/CartContext";
 import Welcome from '@/pages/Welcome';
 import FarmerLogin from '@/pages/FarmerLogin';
 import DistributorLogin from '@/pages/DistributorLogin';
@@ -133,11 +134,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster />
-          <Sonner />
-        </Router>
+        <CartProvider>
+          <Router>
+            <AppRoutes />
+            <Toaster />
+            <Sonner />
+          </Router>
+        </CartProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
