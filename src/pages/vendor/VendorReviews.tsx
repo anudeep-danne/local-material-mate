@@ -41,7 +41,7 @@ const VendorReviews = () => {
     if (!selectedSupplier) return [];
     
     const products = supplierOrders.map(order => ({
-      product_id: order.product_id,
+      product_id: order.product?.id,
       product_name: order.product?.name || 'Unknown Product',
       order_id: order.id,
       created_at: order.created_at
@@ -81,7 +81,7 @@ const VendorReviews = () => {
         
         // Get unique products for this supplier
         const products = supplierOrders.map(order => ({
-          product_id: order.product_id,
+          product_id: order.product?.id,
           order_id: order.id
         }));
         

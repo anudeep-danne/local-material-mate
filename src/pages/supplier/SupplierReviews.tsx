@@ -44,7 +44,7 @@ const SupplierReviews = () => {
       const { data: allReviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('*')
-        .eq('supplier_id', supplierId)
+        .eq('to_user_id', supplierId)
         .order('created_at', { ascending: false });
 
       if (reviewsError) {
@@ -98,58 +98,32 @@ const SupplierReviews = () => {
             const { data: vendorData, error: vendorError } = await supabase
               .from('users')
               .select('name')
-              .eq('id', review.vendor_id)
+              .eq('id', review.from_user_id)
               .single();
 
             if (vendorError) {
               console.error('Error fetching vendor data:', vendorError);
             }
 
-            // Get order and product information
-            const { data: orderData, error: orderError } = await supabase
-              .from('orders')
-              .select(`
-                id,
-                product_id,
-                product:products!orders_product_id_fkey(
-                  id,
-                  name
-                )
-              `)
-              .eq('id', review.order_id)
-              .single();
+            // Skip order and product information for simplified reviews
+            const orderData = null;
 
-            if (orderError) {
-              console.error('Error fetching order data:', orderError);
-            }
+            // Skip order error handling for simplified reviews
 
             // Determine product name
-            let productName = 'Product (No longer available)';
+            let productName = 'General Review';
             let productId = null;
-            
-            if (orderData?.product?.name) {
-              productName = orderData.product.name;
-              productId = orderData.product_id;
-            } else if (products && products.length > 0) {
-              // Try to find the product in the current products list
-              const matchingProduct = products.find(p => p.id === orderData?.product_id);
-              if (matchingProduct) {
-                productName = matchingProduct.name;
-                productId = matchingProduct.id;
-              }
-            }
 
             const transformedReview = {
               id: review.id,
               rating: review.rating,
               comment: review.comment,
               created_at: review.created_at,
-              vendor_id: review.vendor_id,
+              from_user_id: review.from_user_id,
               vendor_name: vendorData?.name || 'Unknown Vendor',
               supplier_name: 'Supplier',
               product_name: productName,
-              product_id: productId,
-              order_id: review.order_id
+              product_id: productId
             };
             
             console.log(`Transformed review: ${transformedReview.id} for product ${transformedReview.product_name} by ${transformedReview.vendor_name}`);

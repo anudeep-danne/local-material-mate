@@ -4,9 +4,8 @@ import { toast } from 'sonner';
 
 type Review = {
   id: string;
-  supplier_id: string;
-  vendor_id: string;
-  order_id: string;
+  from_user_id: string;
+  to_user_id: string;
   rating: number;
   comment: string | null;
   created_at: string;
@@ -24,9 +23,9 @@ export const useReviews = (userId?: string, userRole?: string) => {
 
       if (userId && userRole) {
         if (userRole === 'vendor' || userRole === 'consumer' || userRole === 'distributor') {
-          query = query.eq('vendor_id', userId);
+          query = query.eq('to_user_id', userId);
         } else if (userRole === 'supplier' || userRole === 'farmer') {
-          query = query.eq('supplier_id', userId);
+          query = query.eq('from_user_id', userId);
         }
       }
 
@@ -42,9 +41,8 @@ export const useReviews = (userId?: string, userRole?: string) => {
   }, [userId, userRole]);
 
   const submitReview = async (reviewData: {
-    orderId: string;
-    vendorId: string;
-    supplierId: string;
+    fromUserId: string;
+    toUserId: string;
     rating: number;
     comment?: string;
   }) => {
@@ -57,9 +55,8 @@ export const useReviews = (userId?: string, userRole?: string) => {
       const { error } = await supabase
         .from('reviews')
         .insert({
-          order_id: reviewData.orderId,
-          vendor_id: reviewData.vendorId,
-          supplier_id: reviewData.supplierId,
+          from_user_id: reviewData.fromUserId,
+          to_user_id: reviewData.toUserId,
           rating: reviewData.rating,
           comment: reviewData.comment?.trim() || null
         });
