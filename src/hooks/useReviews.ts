@@ -5,18 +5,12 @@ import { toast } from 'sonner';
 
 type Review = {
   id: string;
-  product_id: string;
   supplier_id: string;
   vendor_id: string;
   order_id: string;
   rating: number;
   comment: string | null;
   created_at: string;
-  updated_at: string;
-  vendor: Database['public']['Tables']['users']['Row'];
-  supplier: Database['public']['Tables']['users']['Row'];
-  product: Database['public']['Tables']['products']['Row'];
-  order: Database['public']['Tables']['orders']['Row'];
 };
 
 type ProductRating = {
@@ -34,7 +28,7 @@ type SupplierRating = {
   totalReviews: number;
 };
 
-export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') => {
+export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier' | 'farmer' | 'distributor' | 'retailer' | 'consumer') => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,17 +38,14 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
       setLoading(true);
       let query = supabase
         .from('reviews')
-        .select(`
-          *,
-          vendor:users!reviews_vendor_id_fkey(*),
-          supplier:users!reviews_supplier_id_fkey(*),
-          product:products!reviews_product_id_fkey(*),
-          order:orders!reviews_order_id_fkey(*)
-        `);
+        .select('*');
 
       if (userId && userRole) {
-        const column = userRole === 'vendor' ? 'vendor_id' : 'supplier_id';
-        query = query.eq(column, userId);
+        if (userRole === 'vendor' || userRole === 'consumer' || userRole === 'distributor') {
+          query = query.eq('vendor_id', userId);
+        } else if (userRole === 'supplier' || userRole === 'farmer') {
+          query = query.eq('supplier_id', userId);
+        }
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -266,14 +257,8 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
     try {
       const { data, error } = await supabase
         .from('reviews')
-        .select(`
-          *,
-          vendor:users!reviews_vendor_id_fkey(name),
-          supplier:users!reviews_supplier_id_fkey(name),
-          product:products!reviews_product_id_fkey(name),
-          order:orders!reviews_order_id_fkey(id)
-        `)
-        .eq('product_id', productId)
+        .select('*')
+        .eq('order_id', productId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

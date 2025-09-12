@@ -4,8 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Welcome from '@/pages/Welcome';
-import VendorLogin from '@/pages/VendorLogin';
-import SupplierLogin from '@/pages/SupplierLogin';
+import FarmerLogin from '@/pages/FarmerLogin';
+import DistributorLogin from '@/pages/DistributorLogin';
+import RetailerLogin from '@/pages/RetailerLogin';
+import ConsumerLogin from '@/pages/ConsumerLogin';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 

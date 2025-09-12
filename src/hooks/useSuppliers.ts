@@ -8,6 +8,10 @@ type Supplier = Database['public']['Tables']['users']['Row'] & {
   productsCount: number;
   averagePrice: number;
   specialties: string[];
+  certifications: string | null;
+  fleet_size: number | null;
+  gst_number: string | null;
+  license_number: string | null;
 };
 
 export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusFilter?: number) => {
@@ -36,9 +40,13 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
           latitude,
           longitude,
           description,
-          created_at
+          created_at,
+          certifications,
+          fleet_size,
+          gst_number,
+          license_number
         `)
-        .eq('role', 'supplier');
+        .eq('role', 'farmer');
 
       if (suppliersError) throw suppliersError;
 
@@ -51,11 +59,11 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
             .select('rating')
             .eq('supplier_id', supplier.id);
 
-          // Get products for this supplier
-          const { data: products } = await supabase
-            .from('products')
-            .select('price, category')
-            .eq('supplier_id', supplier.id);
+          // Get batches for this farmer (new supplier)
+          const { data: batches } = await supabase
+            .from('batches')
+            .select('price_per_kg, crop_type')
+            .eq('farmer_id', supplier.id);
 
           // Calculate ratings
           const ratings = reviews?.map(r => r.rating) || [];
@@ -63,15 +71,15 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
             ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length 
             : 0;
 
-          // Calculate product stats
-          const prices = products?.map(p => p.price) || [];
+          // Calculate batch stats
+          const prices = batches?.map(b => b.price_per_kg) || [];
           const averagePrice = prices.length > 0 
             ? prices.reduce((sum, price) => sum + price, 0) / prices.length 
             : 0;
 
-          // Get unique categories (specialties)
-          const categories = products?.map(p => p.category) || [];
-          const uniqueCategories = [...new Set(categories)];
+          // Get unique crop types (specialties)
+          const cropTypes = batches?.map(b => b.crop_type) || [];
+          const uniqueCategories = [...new Set(cropTypes)];
 
           // Process supplier data to handle incomplete information
           const processedSupplier = {
@@ -84,9 +92,13 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
             address: supplier.address || 'Address Not Set',
             averageRating,
             totalReviews: ratings.length,
-            productsCount: products?.length || 0,
+            productsCount: batches?.length || 0,
             averagePrice,
-            specialties: uniqueCategories
+            specialties: uniqueCategories,
+            certifications: supplier.certifications,
+            fleet_size: supplier.fleet_size,
+            gst_number: supplier.gst_number,
+            license_number: supplier.license_number
           };
 
           return processedSupplier;
