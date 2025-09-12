@@ -21,8 +21,34 @@ export const useVendorOrders = (vendorId?: string) => {
 
     try {
       setLoading(true);
-      // For now, return empty array since orders schema has changed
-      setOrders([]);
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          supplier:users!orders_supplier_id_fkey(
+            id,
+            name,
+            email,
+            role,
+            business_name,
+            phone,
+            address,
+            city,
+            state,
+            pincode,
+            description
+          ),
+          product:products!orders_product_id_fkey(*)
+        `)
+        .eq('vendor_id', vendorId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+      
+      setOrders(data as Order[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -34,8 +60,44 @@ export const useVendorOrders = (vendorId?: string) => {
     if (!vendorId) return [];
 
     try {
-      // For now, return empty array since orders schema has changed
-      return [];
+      // Get unique suppliers from recent orders (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          supplier_id,
+          supplier:users!orders_supplier_id_fkey(
+            id,
+            name,
+            email,
+            role,
+            business_name,
+            phone,
+            address,
+            city,
+            state,
+            pincode,
+            description
+          )
+        `)
+        .eq('vendor_id', vendorId)
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Get unique suppliers
+      const uniqueSuppliers = data.reduce((acc: any[], order: any) => {
+        const existing = acc.find(s => s.id === order.supplier.id);
+        if (!existing) {
+          acc.push(order.supplier);
+        }
+        return acc;
+      }, []);
+
+      return uniqueSuppliers;
     } catch (err) {
       console.error('Error fetching recent suppliers:', err);
       return [];
@@ -43,7 +105,7 @@ export const useVendorOrders = (vendorId?: string) => {
   }, [vendorId]);
 
   const getOrdersForSupplier = useCallback((supplierId: string) => {
-    return orders.filter(order => order.supplier?.id === supplierId);
+    return orders.filter(order => order.supplier_id === supplierId);
   }, [orders]);
 
   const hasReviewedSupplier = useCallback(async (supplierId: string) => {
@@ -53,8 +115,8 @@ export const useVendorOrders = (vendorId?: string) => {
       const { data, error } = await supabase
         .from('reviews')
         .select('id')
-        .eq('from_user_id', vendorId)
-        .eq('to_user_id', supplierId)
+        .eq('vendor_id', vendorId)
+        .eq('supplier_id', supplierId)
         .limit(1);
 
       if (error) throw error;

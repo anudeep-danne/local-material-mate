@@ -1,197 +1,142 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { Toaster } from '@/components/ui/toaster';
-import { CartProvider } from '@/contexts/CartContext';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-
-// Pages
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Welcome from '@/pages/Welcome';
-import NotFound from '@/pages/NotFound';
+import VendorLogin from '@/pages/VendorLogin';
+import SupplierLogin from '@/pages/SupplierLogin';
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 
-// Farmer pages  
-import FarmerDashboard from '@/pages/farmer/FarmerDashboard';
-import CreateBatch from '@/pages/farmer/CreateBatch';
-import MyBatches from '@/pages/farmer/MyBatches';
-import FarmerOffers from '@/pages/farmer/Offers';
-import FarmerTransactions from '@/pages/farmer/Transactions';
-import FarmerProfile from '@/pages/farmer/Profile';
+// Vendor Pages
+import VendorDashboard from "./pages/vendor/VendorDashboard";
+import BrowseProducts from "./pages/vendor/BrowseProducts";
+import Cart from "./pages/vendor/Cart";
+import MyOrders from "./pages/vendor/MyOrders";
+import CompareSuppliers from "./pages/vendor/CompareSuppliers";
+import VendorReviews from "./pages/vendor/VendorReviews";
+import VendorAccountSettings from "./pages/vendor/AccountSettings";
 
-// Distributor pages
-import DistributorDashboard from '@/pages/distributor/DistributorDashboard';
-import AvailableBatches from '@/pages/distributor/AvailableBatches';
-import DistributorPurchases from '@/pages/distributor/Purchases';
-import SellToRetailer from '@/pages/distributor/SellToRetailer';
-import DistributorShipments from '@/pages/distributor/Shipments';
-import DistributorTransactions from '@/pages/distributor/Transactions';
-import DistributorProfile from '@/pages/distributor/Profile';
-
-// Retailer pages
-import RetailerDashboard from '@/pages/retailer/RetailerDashboard';
-import RetailerBatches from '@/pages/retailer/AvailableBatches';
-import IncomingShipments from '@/pages/retailer/IncomingShipments';
-import RetailerInventory from '@/pages/retailer/Inventory';
-import RetailerTransactions from '@/pages/retailer/Transactions';
-import RetailerProfile from '@/pages/retailer/Profile';
-
-// Consumer pages
-import ConsumerHome from '@/pages/consumer/ConsumerHome';
-import BuyProducts from '@/pages/consumer/BuyProducts';
-import TraceProduce from '@/pages/consumer/TraceProduce';
-import About from '@/pages/consumer/About';
-import Contact from '@/pages/consumer/Contact';
-
-// Layouts
-import { FarmerLayout } from '@/components/FarmerLayout';
-import { ConsumerLayout } from '@/components/ConsumerLayout';
-import { RetailerLayout } from '@/components/RetailerLayout';
-import { DistributorLayout } from '@/components/DistributorLayout';
+// Supplier Pages
+import SupplierDashboard from "./pages/supplier/SupplierDashboard";
+import MyProducts from "./pages/supplier/MyProducts";
+import AddProduct from "./pages/supplier/AddProduct";
+import EditProduct from "./pages/supplier/EditProduct";
+import IncomingOrders from "./pages/supplier/IncomingOrders";
+import SupplierReviews from "./pages/supplier/SupplierReviews";
+import SupplierAccountSettings from "./pages/supplier/AccountSettings";
+import DebugAuth from "./pages/supplier/DebugAuth";
+import { SupplierLayout } from "@/components/SupplierLayout";
+import { VendorLayout } from "@/components/VendorLayout";
+import { useAuth } from '@/hooks/useAuth';
+import { CartProvider } from '@/contexts/CartContext';
 
 const queryClient = new QueryClient();
 
+// Simple test component to verify rendering
+const TestComponent = () => {
+  console.log('🧪 TestComponent rendered');
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">Test Component</h1>
+        <p>If you can see this, React is working!</p>
+      </div>
+    </div>
+  );
+};
+
+function ProtectedRoute({ role }: { role: 'vendor' | 'supplier' }) {
+  const { user, role: userRole, loading, error } = useAuth();
+  
+  console.log('🔍 ProtectedRoute:', { role, user: !!user, userRole, loading, error });
+  
+  if (loading) {
+    console.log('⏳ ProtectedRoute: Loading...');
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="text-lg mb-4">Loading...</div>
+        <div className="text-sm text-muted-foreground">Checking authentication...</div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    console.log('❌ ProtectedRoute: Error:', error);
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="text-lg mb-4 text-destructive">Authentication Error</div>
+        <div className="text-sm text-muted-foreground mb-4">{error}</div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-primary text-primary-foreground rounded"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    console.log('🚫 ProtectedRoute: No user, redirecting to /');
+    return <Navigate to="/" />;
+  }
+  
+  if (userRole !== role) {
+    console.log('🚫 ProtectedRoute: Role mismatch, redirecting to /');
+    return <Navigate to="/" />;
+  }
+  
+  console.log('✅ ProtectedRoute: Access granted');
+  return <Outlet />;
+}
+
 function AppRoutes() {
+  const { user, role, loading, error } = useAuth();
+
+  console.log('🔍 AppRoutes: State:', { user: !!user, role, loading, error });
+
+  // Show error state if there's an authentication error
+  if (error && !loading) {
+    console.log('❌ AppRoutes: Showing error state');
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="text-lg mb-4 text-destructive">Authentication Error</div>
+        <div className="text-sm text-muted-foreground mb-4">{error}</div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-primary text-primary-foreground rounded"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  console.log('✅ AppRoutes: Rendering main app structure');
+
   return (
     <Routes>
-      {/* Landing page */}
       <Route path="/" element={<Welcome />} />
-      <Route path="/welcome" element={<Welcome />} />
-
-      {/* Redirect old login routes to welcome page */}
-      <Route path="/farmer-login" element={<Navigate to="/" replace />} />
-      <Route path="/distributor-login" element={<Navigate to="/" replace />} />
-      <Route path="/retailer-login" element={<Navigate to="/" replace />} />
-      <Route path="/consumer-login" element={<Navigate to="/" replace />} />
-      <Route path="/index" element={<Navigate to="/" replace />} />
-
-      {/* Farmer routes */}
-      <Route path="/farmer/dashboard" element={
-        <FarmerLayout>
-          <FarmerDashboard />
-        </FarmerLayout>
-      } />
-      <Route path="/farmer/create-batch" element={
-        <FarmerLayout>
-          <CreateBatch />
-        </FarmerLayout>
-      } />
-      <Route path="/farmer/batches" element={
-        <FarmerLayout>
-          <MyBatches />
-        </FarmerLayout>
-      } />
-      <Route path="/farmer/offers" element={
-        <FarmerLayout>
-          <FarmerOffers />
-        </FarmerLayout>
-      } />
-      <Route path="/farmer/transactions" element={
-        <FarmerLayout>
-          <FarmerTransactions />
-        </FarmerLayout>
-      } />
-      <Route path="/farmer/profile" element={
-        <FarmerLayout>
-          <FarmerProfile />
-        </FarmerLayout>
-      } />
-
-      {/* Distributor routes */}
-      <Route path="/distributor/dashboard" element={
-        <DistributorLayout>
-          <DistributorDashboard />
-        </DistributorLayout>
-      } />
-      <Route path="/distributor/batches" element={
-        <DistributorLayout>
-          <AvailableBatches />
-        </DistributorLayout>
-      } />
-      <Route path="/distributor/purchases" element={
-        <DistributorLayout>
-          <DistributorPurchases />
-        </DistributorLayout>
-      } />
-      <Route path="/distributor/sell" element={
-        <DistributorLayout>
-          <SellToRetailer />
-        </DistributorLayout>
-      } />
-      <Route path="/distributor/shipments" element={
-        <DistributorLayout>
-          <DistributorShipments />
-        </DistributorLayout>
-      } />
-      <Route path="/distributor/transactions" element={
-        <DistributorLayout>
-          <DistributorTransactions />
-        </DistributorLayout>
-      } />
-      <Route path="/distributor/profile" element={
-        <DistributorLayout>
-          <DistributorProfile />
-        </DistributorLayout>
-      } />
-
-      {/* Retailer routes */}
-      <Route path="/retailer/dashboard" element={
-        <RetailerLayout>
-          <RetailerDashboard />
-        </RetailerLayout>
-      } />
-      <Route path="/retailer/batches" element={
-        <RetailerLayout>
-          <RetailerBatches />
-        </RetailerLayout>
-      } />
-      <Route path="/retailer/shipments" element={
-        <RetailerLayout>
-          <IncomingShipments />
-        </RetailerLayout>
-      } />
-      <Route path="/retailer/inventory" element={
-        <RetailerLayout>
-          <RetailerInventory />
-        </RetailerLayout>
-      } />
-      <Route path="/retailer/transactions" element={
-        <RetailerLayout>
-          <RetailerTransactions />
-        </RetailerLayout>
-      } />
-      <Route path="/retailer/profile" element={
-        <RetailerLayout>
-          <RetailerProfile />
-        </RetailerLayout>
-      } />
-
-      {/* Consumer routes */}
-      <Route path="/consumer/home" element={
-        <ConsumerLayout>
-          <ConsumerHome />
-        </ConsumerLayout>
-      } />
-      <Route path="/consumer/buy" element={
-        <ConsumerLayout>
-          <BuyProducts />
-        </ConsumerLayout>
-      } />
-      <Route path="/consumer/trace" element={
-        <ConsumerLayout>
-          <TraceProduce />
-        </ConsumerLayout>
-      } />
-      <Route path="/consumer/about" element={
-        <ConsumerLayout>
-          <About />
-        </ConsumerLayout>
-      } />
-      <Route path="/consumer/contact" element={
-        <ConsumerLayout>
-          <Contact />
-        </ConsumerLayout>
-      } />
-
-      {/* 404 */}
+      <Route path="/test" element={<TestComponent />} />
+      <Route path="/debug-auth" element={<DebugAuth />} />
+      <Route path="/vendor-login" element={user && role === 'vendor' ? <Navigate to="/vendor/dashboard" /> : <VendorLogin />} />
+      <Route path="/supplier-login" element={user && role === 'supplier' ? <Navigate to="/supplier/dashboard" /> : <SupplierLogin />} />
+      <Route path="/vendor/dashboard" element={<VendorLayout><VendorDashboard /></VendorLayout>} />
+      <Route path="/vendor/browse" element={<VendorLayout><BrowseProducts /></VendorLayout>} />
+      <Route path="/vendor/cart" element={<VendorLayout><Cart /></VendorLayout>} />
+      <Route path="/vendor/orders" element={<VendorLayout><MyOrders /></VendorLayout>} />
+      <Route path="/vendor/compare" element={<VendorLayout><CompareSuppliers /></VendorLayout>} />
+      <Route path="/vendor/reviews" element={<VendorLayout><VendorReviews /></VendorLayout>} />
+      <Route path="/vendor/account" element={<VendorLayout><VendorAccountSettings /></VendorLayout>} />
+      <Route path="/supplier/dashboard" element={<SupplierLayout><SupplierDashboard /></SupplierLayout>} />
+      <Route path="/supplier/products" element={<SupplierLayout><MyProducts /></SupplierLayout>} />
+      <Route path="/supplier/add-product" element={<SupplierLayout><AddProduct /></SupplierLayout>} />
+      <Route path="/supplier/edit-product/:productId" element={<SupplierLayout><EditProduct /></SupplierLayout>} />
+      <Route path="/supplier/orders" element={<SupplierLayout><IncomingOrders /></SupplierLayout>} />
+      <Route path="/supplier/reviews" element={<SupplierLayout><SupplierReviews /></SupplierLayout>} />
+      <Route path="/supplier/settings" element={<SupplierLayout><SupplierAccountSettings /></SupplierLayout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -201,13 +146,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CartProvider>
-          <Router>
+        <Router>
+          <CartProvider>
             <AppRoutes />
-            <Toaster />
-            <Sonner />
-          </Router>
-        </CartProvider>
+          </CartProvider>
+          <Toaster />
+          <Sonner />
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   );

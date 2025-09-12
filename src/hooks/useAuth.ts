@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getSession = async () => {
@@ -145,7 +147,7 @@ export function useAuth() {
       setRole(null);
       setError(null);
       console.log('✅ useAuth: Logout successful');
-      // Navigation will be handled by the component calling logout
+      navigate('/');
     } catch (err) {
       console.error('❌ useAuth: Logout error:', err);
       setError(err instanceof Error ? err.message : 'Logout failed');
