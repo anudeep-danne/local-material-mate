@@ -7,67 +7,19 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
+  // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
-      batches: {
-        Row: {
-          created_at: string
-          crop_type: string
-          farmer_id: string
-          harvest_date: string
-          id: string
-          price_per_kg: number
-          quantity: number
-          remaining_quantity: number
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          crop_type: string
-          farmer_id: string
-          harvest_date: string
-          id?: string
-          price_per_kg: number
-          quantity: number
-          remaining_quantity: number
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          crop_type?: string
-          farmer_id?: string
-          harvest_date?: string
-          id?: string
-          price_per_kg?: number
-          quantity?: number
-          remaining_quantity?: number
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "batches_farmer_id_fkey"
-            columns: ["farmer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cart: {
         Row: {
           created_at: string
           id: string
           product_id: string
           quantity: number
-          updated_at: string | null
           vendor_id: string
         }
         Insert: {
@@ -75,7 +27,6 @@ export type Database = {
           id?: string
           product_id: string
           quantity?: number
-          updated_at?: string | null
           vendor_id: string
         }
         Update: {
@@ -83,24 +34,9 @@ export type Database = {
           id?: string
           product_id?: string
           quantity?: number
-          updated_at?: string | null
           vendor_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "cart_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "cart_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
           {
             foreignKeyName: "cart_product_id_fkey"
             columns: ["product_id"]
@@ -117,192 +53,41 @@ export type Database = {
           },
         ]
       }
-      consumer_orders: {
-        Row: {
-          consumer_id: string
-          created_at: string
-          delivery_address: string
-          id: string
-          inventory_id: string
-          quantity: number
-          retailer_id: string
-          status: string
-          total_amount: number
-          updated_at: string
-        }
-        Insert: {
-          consumer_id: string
-          created_at?: string
-          delivery_address: string
-          id?: string
-          inventory_id: string
-          quantity: number
-          retailer_id: string
-          status?: string
-          total_amount: number
-          updated_at?: string
-        }
-        Update: {
-          consumer_id?: string
-          created_at?: string
-          delivery_address?: string
-          id?: string
-          inventory_id?: string
-          quantity?: number
-          retailer_id?: string
-          status?: string
-          total_amount?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "consumer_orders_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "consumer_orders_inventory_id_fkey"
-            columns: ["inventory_id"]
-            isOneToOne: false
-            referencedRelation: "retailer_inventory"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "consumer_orders_retailer_id_fkey"
-            columns: ["retailer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      offers: {
-        Row: {
-          batch_id: string
-          created_at: string
-          distributor_id: string
-          expires_at: string | null
-          farmer_id: string
-          id: string
-          notes: string | null
-          offered_price_per_kg: number
-          quantity: number
-          status: string
-          total_offer_amount: number
-          updated_at: string
-        }
-        Insert: {
-          batch_id: string
-          created_at?: string
-          distributor_id: string
-          expires_at?: string | null
-          farmer_id: string
-          id?: string
-          notes?: string | null
-          offered_price_per_kg: number
-          quantity: number
-          status?: string
-          total_offer_amount: number
-          updated_at?: string
-        }
-        Update: {
-          batch_id?: string
-          created_at?: string
-          distributor_id?: string
-          expires_at?: string | null
-          farmer_id?: string
-          id?: string
-          notes?: string | null
-          offered_price_per_kg?: number
-          quantity?: number
-          status?: string
-          total_offer_amount?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "offers_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "offers_distributor_id_fkey"
-            columns: ["distributor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "offers_farmer_id_fkey"
-            columns: ["farmer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orders: {
         Row: {
-          accepted_by: string | null
-          cancelled_by: string | null
           created_at: string
           id: string
           product_id: string
           quantity: number
           status: string
-          stock_updated: boolean
           supplier_id: string
           total_amount: number
           updated_at: string
           vendor_id: string
         }
         Insert: {
-          accepted_by?: string | null
-          cancelled_by?: string | null
           created_at?: string
           id?: string
           product_id: string
           quantity?: number
           status?: string
-          stock_updated?: boolean
           supplier_id: string
           total_amount: number
           updated_at?: string
           vendor_id: string
         }
         Update: {
-          accepted_by?: string | null
-          cancelled_by?: string | null
           created_at?: string
           id?: string
           product_id?: string
           quantity?: number
           status?: string
-          stock_updated?: boolean
           supplier_id?: string
           total_amount?: number
           updated_at?: string
           vendor_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
           {
             foreignKeyName: "orders_product_id_fkey"
             columns: ["product_id"]
@@ -370,57 +155,6 @@ export type Database = {
           },
         ]
       }
-      retailer_inventory: {
-        Row: {
-          batch_id: string
-          created_at: string
-          expiry_date: string | null
-          id: string
-          quantity: number
-          retail_price_per_kg: number
-          retailer_id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          batch_id: string
-          created_at?: string
-          expiry_date?: string | null
-          id?: string
-          quantity: number
-          retail_price_per_kg: number
-          retailer_id: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          batch_id?: string
-          created_at?: string
-          expiry_date?: string | null
-          id?: string
-          quantity?: number
-          retail_price_per_kg?: number
-          retailer_id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "retailer_inventory_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "retailer_inventory_retailer_id_fkey"
-            columns: ["retailer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reviews: {
         Row: {
           comment: string | null
@@ -454,20 +188,6 @@ export type Database = {
             foreignKeyName: "reviews_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
-            referencedRelation: "clean_vendor_orders"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "reviews_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_vendor_display"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "reviews_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -487,669 +207,63 @@ export type Database = {
           },
         ]
       }
-      shipments: {
-        Row: {
-          actual_arrival: string | null
-          created_at: string
-          departure_time: string | null
-          distributor_id: string
-          driver_name: string | null
-          driver_phone: string | null
-          expected_arrival: string | null
-          id: string
-          status: string
-          tracking_notes: string | null
-          transfer_id: string
-          updated_at: string
-          vehicle_number: string | null
-        }
-        Insert: {
-          actual_arrival?: string | null
-          created_at?: string
-          departure_time?: string | null
-          distributor_id: string
-          driver_name?: string | null
-          driver_phone?: string | null
-          expected_arrival?: string | null
-          id?: string
-          status?: string
-          tracking_notes?: string | null
-          transfer_id: string
-          updated_at?: string
-          vehicle_number?: string | null
-        }
-        Update: {
-          actual_arrival?: string | null
-          created_at?: string
-          departure_time?: string | null
-          distributor_id?: string
-          driver_name?: string | null
-          driver_phone?: string | null
-          expected_arrival?: string | null
-          id?: string
-          status?: string
-          tracking_notes?: string | null
-          transfer_id?: string
-          updated_at?: string
-          vehicle_number?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipments_distributor_id_fkey"
-            columns: ["distributor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipments_transfer_id_fkey"
-            columns: ["transfer_id"]
-            isOneToOne: false
-            referencedRelation: "transfers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stock_changes: {
-        Row: {
-          change_amount: number
-          change_type: string
-          created_at: string | null
-          id: string
-          new_stock: number
-          old_stock: number
-          order_id: string | null
-          product_id: string
-        }
-        Insert: {
-          change_amount: number
-          change_type: string
-          created_at?: string | null
-          id?: string
-          new_stock: number
-          old_stock: number
-          order_id?: string | null
-          product_id: string
-        }
-        Update: {
-          change_amount?: number
-          change_type?: string
-          created_at?: string | null
-          id?: string
-          new_stock?: number
-          old_stock?: number
-          order_id?: string | null
-          product_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_changes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "clean_vendor_orders"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "stock_changes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_vendor_display"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "stock_changes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_changes_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "stock_changes_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "stock_changes_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      supplier_profile_updates: {
-        Row: {
-          created_at: string | null
-          id: string
-          new_business_name: string | null
-          old_business_name: string | null
-          supplier_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          new_business_name?: string | null
-          old_business_name?: string | null
-          supplier_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          new_business_name?: string | null
-          old_business_name?: string | null
-          supplier_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "supplier_profile_updates_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transfers: {
-        Row: {
-          batch_id: string
-          created_at: string
-          from_user_id: string
-          id: string
-          notes: string | null
-          price_per_kg: number
-          quantity: number
-          status: string
-          to_user_id: string
-          total_amount: number
-          transfer_type: string
-          updated_at: string
-        }
-        Insert: {
-          batch_id: string
-          created_at?: string
-          from_user_id: string
-          id?: string
-          notes?: string | null
-          price_per_kg: number
-          quantity: number
-          status?: string
-          to_user_id: string
-          total_amount: number
-          transfer_type: string
-          updated_at?: string
-        }
-        Update: {
-          batch_id?: string
-          created_at?: string
-          from_user_id?: string
-          id?: string
-          notes?: string | null
-          price_per_kg?: number
-          quantity?: number
-          status?: string
-          to_user_id?: string
-          total_amount?: number
-          transfer_type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transfers_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transfers_from_user_id_fkey"
-            columns: ["from_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transfers_to_user_id_fkey"
-            columns: ["to_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       users: {
         Row: {
-          address: string | null
-          business_name: string | null
-          certifications: string | null
-          city: string | null
           created_at: string
-          description: string | null
-          email: string | null
-          fleet_size: number | null
-          gst_number: string | null
           id: string
-          latitude: number | null
-          license_number: string | null
-          longitude: number | null
           name: string
-          phone: string | null
-          pincode: string | null
           role: string
+          business_name: string | null
+          email: string | null
+          phone: string | null
+          address: string | null
+          city: string | null
           state: string | null
+          pincode: string | null
+          latitude: number | null
+          longitude: number | null
+          description: string | null
         }
         Insert: {
-          address?: string | null
-          business_name?: string | null
-          certifications?: string | null
-          city?: string | null
           created_at?: string
-          description?: string | null
-          email?: string | null
-          fleet_size?: number | null
-          gst_number?: string | null
           id?: string
-          latitude?: number | null
-          license_number?: string | null
-          longitude?: number | null
           name: string
-          phone?: string | null
-          pincode?: string | null
           role: string
+          business_name?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
           state?: string | null
+          pincode?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          description?: string | null
         }
         Update: {
-          address?: string | null
-          business_name?: string | null
-          certifications?: string | null
-          city?: string | null
           created_at?: string
-          description?: string | null
-          email?: string | null
-          fleet_size?: number | null
-          gst_number?: string | null
           id?: string
-          latitude?: number | null
-          license_number?: string | null
-          longitude?: number | null
           name?: string
-          phone?: string | null
-          pincode?: string | null
           role?: string
+          business_name?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
           state?: string | null
+          pincode?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          description?: string | null
         }
         Relationships: []
       }
     }
     Views: {
-      cart_items_with_details: {
-        Row: {
-          cart_id: string | null
-          created_at: string | null
-          item_total: number | null
-          product_category: string | null
-          product_id: string | null
-          product_image: string | null
-          product_name: string | null
-          product_price: number | null
-          product_stock: number | null
-          quantity: number | null
-          supplier_business_name: string | null
-          supplier_city: string | null
-          supplier_name: string | null
-          supplier_phone: string | null
-          supplier_state: string | null
-          updated_at: string | null
-          vendor_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cart_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "cart_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "cart_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      clean_vendor_orders: {
-        Row: {
-          order_created_at: string | null
-          order_id: string | null
-          product_id: string | null
-          product_name: string | null
-          product_price: number | null
-          quantity: number | null
-          status: string | null
-          supplier_business_name: string | null
-          supplier_id: string | null
-          supplier_name: string | null
-          total_amount: number | null
-          vendor_address: string | null
-          vendor_business_name: string | null
-          vendor_city: string | null
-          vendor_email: string | null
-          vendor_id: string | null
-          vendor_name: string | null
-          vendor_phone: string | null
-          vendor_state: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      order_vendor_display: {
-        Row: {
-          order_created_at: string | null
-          order_id: string | null
-          product_id: string | null
-          quantity: number | null
-          status: string | null
-          supplier_id: string | null
-          total_amount: number | null
-          vendor_address: string | null
-          vendor_business_name: string | null
-          vendor_city: string | null
-          vendor_created_at: string | null
-          vendor_display_location: string | null
-          vendor_display_name: string | null
-          vendor_display_phone: string | null
-          vendor_email: string | null
-          vendor_id: string | null
-          vendor_name: string | null
-          vendor_phone: string | null
-          vendor_pincode: string | null
-          vendor_state: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_display"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "product_supplier_relationships"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_supplier_display: {
-        Row: {
-          product_category: string | null
-          product_created_at: string | null
-          product_id: string | null
-          product_image: string | null
-          product_name: string | null
-          product_price: number | null
-          product_stock: number | null
-          supplier_address: string | null
-          supplier_business_name: string | null
-          supplier_city: string | null
-          supplier_created_at: string | null
-          supplier_display_location: string | null
-          supplier_display_name: string | null
-          supplier_display_phone: string | null
-          supplier_email: string | null
-          supplier_id: string | null
-          supplier_name: string | null
-          supplier_phone: string | null
-          supplier_pincode: string | null
-          supplier_state: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "products_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_supplier_relationships: {
-        Row: {
-          product_id: string | null
-          product_name: string | null
-          supplier_business_name: string | null
-          supplier_city: string | null
-          supplier_email: string | null
-          supplier_id: string | null
-          supplier_name: string | null
-          supplier_phone: string | null
-          supplier_state: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "products_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
-      add_to_cart_safe: {
-        Args: { p_product_id: string; p_quantity?: number; p_vendor_id: string }
-        Returns: string
-      }
-      add_to_cart_safe_v2: {
-        Args: { p_product_id: string; p_quantity?: number; p_vendor_id: string }
-        Returns: string
-      }
-      delete_product_safe: {
-        Args: { product_id: string; supplier_id: string }
-        Returns: boolean
-      }
-      get_cart_total: {
-        Args: { p_vendor_id: string }
-        Returns: number
-      }
-      get_latest_supplier_account: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          business_name: string
-          created_at: string
-          email: string
-          id: string
-          name: string
-        }[]
-      }
-      get_most_recent_valid_vendor: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_supplier_display_info: {
-        Args: { supplier_id: string }
-        Returns: {
-          address: string
-          business_name: string
-          city: string
-          display_location: string
-          display_name: string
-          display_phone: string
-          email: string
-          id: string
-          name: string
-          phone: string
-          pincode: string
-          state: string
-        }[]
-      }
-      get_supplier_orders: {
-        Args: { supplier_uuid: string }
-        Returns: {
-          created_at: string
-          id: string
-          product_id: string
-          product_name: string
-          quantity: number
-          status: string
-          supplier_id: string
-          supplier_name: string
-          total_amount: number
-          updated_at: string
-          vendor_id: string
-          vendor_name: string
-        }[]
-      }
-      get_vendor_display_info: {
-        Args: { input_vendor_id: string }
-        Returns: {
-          vendor_address: string
-          vendor_business_name: string
-          vendor_city: string
-          vendor_display_location: string
-          vendor_display_name: string
-          vendor_display_phone: string
-          vendor_email: string
-          vendor_id: string
-          vendor_name: string
-          vendor_phone: string
-          vendor_pincode: string
-          vendor_state: string
-        }[]
-      }
-      get_vendor_orders: {
-        Args: { vendor_uuid: string }
-        Returns: {
-          created_at: string
-          id: string
-          product_id: string
-          product_name: string
-          quantity: number
-          status: string
-          supplier_id: string
-          supplier_name: string
-          total_amount: number
-          updated_at: string
-          vendor_id: string
-          vendor_name: string
-        }[]
-      }
-      reduce_product_stock: {
-        Args: { p_product_id: string; p_quantity: number }
-        Returns: boolean
-      }
-      restore_product_stock: {
-        Args: { p_product_id: string; p_quantity: number }
-        Returns: boolean
-      }
-      update_cart_quantity_safe: {
-        Args: { p_cart_item_id: string; p_quantity: number }
-        Returns: boolean
-      }
-      update_cart_quantity_safe_v2: {
-        Args: { p_cart_item_id: string; p_quantity: number }
-        Returns: boolean
-      }
-      update_products_to_latest_supplier: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      validate_vendor_data: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          is_valid: boolean
-          vendor_business_name: string
-          vendor_email: string
-          vendor_id: string
-          vendor_name: string
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

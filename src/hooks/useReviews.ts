@@ -39,7 +39,7 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setLoading(true);
       let query = supabase
@@ -66,7 +66,7 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, userRole]);
 
   const submitReview = async (reviewData: {
     productId: string;
@@ -292,7 +292,7 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
       setReviews([]);
       setLoading(false);
     }
-  }, [userId, userRole]);
+  }, [userId, userRole, fetchReviews]);
 
   return {
     reviews,

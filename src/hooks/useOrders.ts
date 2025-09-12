@@ -243,8 +243,8 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
         .single();
       if (orderError || !order) throw orderError || new Error('Order not found');
 
-      // Only reduce stock if status is being set to 'Packed'
-      if (newStatus === 'Packed') {
+      // Only reduce stock if status is being set to 'Packed' and not already reduced
+      if (newStatus === 'Packed' && !order.stock_updated) {
         // Fetch the product to get current stock
         const { data: product, error: productError } = await supabase
           .from('products')
@@ -259,6 +259,12 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
           .update({ stock: newStock })
           .eq('id', order.product_id);
         if (stockError) throw stockError;
+        // Mark order as stock_updated
+        const { error: markError } = await supabase
+          .from('orders')
+          .update({ stock_updated: true })
+          .eq('id', orderId);
+        if (markError) throw markError;
       }
       // Update order status
       const { error: statusError } = await supabase
