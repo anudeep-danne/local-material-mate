@@ -13,10 +13,15 @@ import NotFound from "./pages/NotFound";
 
 // New Role Pages
 import FarmerDashboard from "./pages/farmer/FarmerDashboard";
+import DistributorDashboard from "./pages/distributor/DistributorDashboard";
+import RetailerDashboard from "./pages/retailer/RetailerDashboard";
+import ConsumerHome from "./pages/consumer/ConsumerHome";
+import VendorDashboard from "./pages/vendor/VendorDashboard";
 import { FarmerLayout } from "@/components/FarmerLayout";
 import { DistributorLayout } from "@/components/DistributorLayout";
 import { RetailerLayout } from "@/components/RetailerLayout";
 import { ConsumerLayout } from "@/components/ConsumerLayout";
+import { VendorLayout } from "@/components/VendorLayout";
 import { useAuth } from '@/hooks/useAuth';
 
 const queryClient = new QueryClient();
@@ -114,6 +119,10 @@ function AppRoutes() {
       <Route path="/consumer-login" element={user && role === 'consumer' ? <Navigate to="/consumer/home" /> : <ConsumerLogin />} />
       
       <Route path="/farmer/dashboard" element={<FarmerLayout><FarmerDashboard /></FarmerLayout>} />
+      <Route path="/distributor/dashboard" element={<DistributorLayout><DistributorDashboard /></DistributorLayout>} />
+      <Route path="/retailer/dashboard" element={<RetailerLayout><RetailerDashboard /></RetailerLayout>} />
+      <Route path="/consumer/home" element={<ConsumerLayout><ConsumerHome /></ConsumerLayout>} />
+      <Route path="/vendor/dashboard" element={<VendorLayout><VendorDashboard /></VendorLayout>} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
