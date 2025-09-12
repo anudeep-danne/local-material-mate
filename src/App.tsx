@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
@@ -55,6 +55,13 @@ function AppRoutes() {
       {/* Landing page */}
       <Route path="/" element={<Welcome />} />
       <Route path="/welcome" element={<Welcome />} />
+
+      {/* Redirect old login routes to welcome page */}
+      <Route path="/farmer-login" element={<Navigate to="/" replace />} />
+      <Route path="/distributor-login" element={<Navigate to="/" replace />} />
+      <Route path="/retailer-login" element={<Navigate to="/" replace />} />
+      <Route path="/consumer-login" element={<Navigate to="/" replace />} />
+      <Route path="/index" element={<Navigate to="/" replace />} />
 
       {/* Farmer routes */}
       <Route path="/farmer/dashboard" element={
