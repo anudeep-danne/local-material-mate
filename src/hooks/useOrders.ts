@@ -245,7 +245,9 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
   // Update order status and reduce stock if needed
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      // Fetch the order to get current status, product_id, quantity, and stock_updated
+      console.log('🔄 Orders: Updating order status:', orderId, 'to:', newStatus);
+      
+      // Fetch the order to get current status, product_id, quantity
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .select('*')
@@ -270,16 +272,25 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
           .eq('id', order.product_id);
         if (stockError) throw stockError;
       }
-      // Update order status
+      
+      // Update order status with explicit updated_at timestamp
       const { error: statusError } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', orderId);
+      
       if (statusError) throw statusError;
-      // Refresh orders
+      
+      console.log('🔄 Orders: Order status updated successfully:', orderId, 'to:', newStatus);
+      
+      // Refresh orders to show the updated status
       await fetchOrders();
       return true;
     } catch (err) {
+      console.error('🔄 Orders: Error updating order status:', err);
       setError(err instanceof Error ? err.message : 'Failed to update order status');
       return false;
     }

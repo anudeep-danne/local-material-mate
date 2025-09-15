@@ -80,6 +80,7 @@ export type Database = {
           stock_updated: boolean | null
           supplier_id: string | null
           total_amount: number
+          updated_at: string
           vendor_id: string | null
         }
         Insert: {
@@ -91,6 +92,7 @@ export type Database = {
           stock_updated?: boolean | null
           supplier_id?: string | null
           total_amount: number
+          updated_at?: string
           vendor_id?: string | null
         }
         Update: {
@@ -102,6 +104,7 @@ export type Database = {
           stock_updated?: boolean | null
           supplier_id?: string | null
           total_amount?: number
+          updated_at?: string
           vendor_id?: string | null
         }
         Relationships: [
