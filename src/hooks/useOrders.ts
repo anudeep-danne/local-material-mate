@@ -169,12 +169,23 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
     try {
       console.log('🔄 Orders: Placing orders for cart items:', cartItems);
       
+      if (!cartItems || cartItems.length === 0) {
+        toast.error('No items in cart');
+        return false;
+      }
+      
       const orderPromises = cartItems.map(async (item) => {
         const totalAmount = item.product.price * item.quantity;
+        const supplierId = item.product.supplier?.id;
+        
+        if (!supplierId) {
+          console.error('🔄 Orders: Missing supplier ID for item:', item);
+          throw new Error('Supplier information missing');
+        }
         
         console.log('🔄 Orders: Creating order for item:', {
           vendor_id: item.vendor_id,
-          supplier_id: item.product.supplier_id,
+          supplier_id: supplierId,
           product_id: item.product_id,
           quantity: item.quantity,
           total_amount: totalAmount,
@@ -185,13 +196,11 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
           .from('orders')
           .insert({
             vendor_id: item.vendor_id,
-            supplier_id: item.product.supplier_id,
+            supplier_id: supplierId,
             product_id: item.product_id,
             quantity: item.quantity,
             total_amount: totalAmount,
-            status: 'Pending',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            status: 'Pending'
           });
       });
 
@@ -200,29 +209,30 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       const errors = results.filter(result => result.error);
       if (errors.length > 0) {
         console.error('🔄 Orders: Order placement errors:', errors);
+        errors.forEach(error => console.error('Order error:', error.error));
         throw new Error('Some orders failed to place');
       }
 
-          console.log('🔄 Orders: All orders placed successfully');
-    toast.success('Orders placed successfully!');
-    
-    // The real-time subscription will automatically refresh the orders
-    // But we can also manually refresh to ensure immediate update
-    console.log('🔄 Orders: Triggering immediate order refresh...');
-    
-    // Immediate refresh after order placement
-    setTimeout(() => {
-      console.log('🔄 Orders: Executing immediate fetchOrders after order placement...');
-      fetchOrders();
-    }, 100);
-    
-    // Additional refresh after a short delay to ensure order is in database
-    setTimeout(() => {
-      console.log('🔄 Orders: Executing delayed fetchOrders after order placement...');
-      fetchOrders();
-    }, 1000);
-    
-    return true;
+      console.log('🔄 Orders: All orders placed successfully');
+      toast.success('Orders placed successfully!');
+      
+      // The real-time subscription will automatically refresh the orders
+      // But we can also manually refresh to ensure immediate update
+      console.log('🔄 Orders: Triggering immediate order refresh...');
+      
+      // Immediate refresh after order placement
+      setTimeout(() => {
+        console.log('🔄 Orders: Executing immediate fetchOrders after order placement...');
+        fetchOrders();
+      }, 100);
+      
+      // Additional refresh after a short delay to ensure order is in database
+      setTimeout(() => {
+        console.log('🔄 Orders: Executing delayed fetchOrders after order placement...');
+        fetchOrders();
+      }, 1000);
+      
+      return true;
     } catch (err) {
       console.error('🔄 Orders: Error placing orders:', err);
       const message = err instanceof Error ? err.message : 'Failed to place orders';
