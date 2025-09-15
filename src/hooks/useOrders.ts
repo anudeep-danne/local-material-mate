@@ -257,20 +257,26 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
 
       // Reduce stock when status is set to 'Packed'
       if (newStatus === 'Packed') {
-        // Fetch the product to get current stock
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', order.product_id)
-          .single();
-        if (productError || !product) throw productError || new Error('Product not found');
-        const newStock = Math.max(0, product.stock - order.quantity);
-        // Update product stock
-        const { error: stockError } = await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', order.product_id);
-        if (stockError) throw stockError;
+        try {
+          // Fetch the product to get current stock
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', order.product_id)
+            .maybeSingle();
+          if (productError) throw productError;
+          if (product) {
+            const newStock = Math.max(0, product.stock - order.quantity);
+            // Update product stock
+            const { error: stockError } = await supabase
+              .from('products')
+              .update({ stock: newStock })
+              .eq('id', order.product_id);
+            if (stockError) throw stockError;
+          }
+        } catch (stockErr) {
+          console.warn('🔄 Orders: Stock update failed, continuing with status update:', stockErr);
+        }
       }
       
       // Update order status with explicit updated_at timestamp
@@ -285,6 +291,9 @@ export const useOrders = (userId: string | null, userRole: 'vendor' | 'supplier'
       if (statusError) throw statusError;
       
       console.log('🔄 Orders: Order status updated successfully:', orderId, 'to:', newStatus);
+      
+      // Optimistically update local state for immediate UI feedback
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() as any } : o));
       
       // Refresh orders to show the updated status
       await fetchOrders();
