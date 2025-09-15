@@ -36,6 +36,11 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
           latitude,
           longitude,
           description,
+          certifications,
+          fleet_size,
+          gst_number,
+          license_number,
+          profile_json,
           created_at
         `)
         .eq('role', 'supplier');
@@ -82,6 +87,12 @@ export const useSuppliers = (vendorId?: string, locationFilter?: string, radiusF
             city: supplier.city || 'Location Not Set',
             state: supplier.state || '',
             address: supplier.address || 'Address Not Set',
+            // Ensure all required database fields are present
+            certifications: supplier.certifications || '',
+            fleet_size: supplier.fleet_size || 0,
+            gst_number: supplier.gst_number || '',
+            license_number: supplier.license_number || '',
+            profile_json: supplier.profile_json || {},
             averageRating,
             totalReviews: ratings.length,
             productsCount: products?.length || 0,

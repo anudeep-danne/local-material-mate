@@ -88,12 +88,11 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
         return false;
       }
 
-      // Check if vendor has already reviewed this product for this order
+      // Check if vendor has already reviewed this order
       const { data: existingReview, error: checkError } = await supabase
         .from('reviews')
         .select('id')
         .eq('vendor_id', reviewData.vendorId)
-        .eq('product_id', reviewData.productId)
         .eq('order_id', reviewData.orderId)
         .limit(1);
 
@@ -148,10 +147,29 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
 
   const getProductRating = async (productId: string): Promise<ProductRating | null> => {
     try {
+      // Since reviews are now linked to orders, we need to find reviews through orders for this product
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('product_id', productId);
+
+      if (ordersError) throw ordersError;
+      
+      if (!orders || orders.length === 0) {
+        return {
+          productId,
+          productName: 'Unknown Product',
+          averageRating: 0,
+          totalReviews: 0
+        };
+      }
+
+      const orderIds = orders.map(order => order.id);
+      
       const { data, error } = await supabase
         .from('reviews')
         .select('rating')
-        .eq('product_id', productId);
+        .in('order_id', orderIds);
 
       if (error) throw error;
 
@@ -218,18 +236,17 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
     }
   };
 
-  const hasReviewedProduct = async (vendorId: string, productId: string, orderId: string) => {
+  const hasReviewedProduct = async (vendorId: string, productId: string, orderId: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase
         .from('reviews')
         .select('id')
         .eq('vendor_id', vendorId)
-        .eq('product_id', productId)
         .eq('order_id', orderId)
         .limit(1);
 
       if (error) throw error;
-      return data.length > 0;
+      return (data?.length ?? 0) > 0;
     } catch (err) {
       console.error('Error checking review status:', err);
       return false;
@@ -266,14 +283,8 @@ export const useReviews = (userId?: string, userRole?: 'vendor' | 'supplier') =>
     try {
       const { data, error } = await supabase
         .from('reviews')
-        .select(`
-          *,
-          vendor:users!reviews_vendor_id_fkey(name),
-          supplier:users!reviews_supplier_id_fkey(name),
-          product:products!reviews_product_id_fkey(name),
-          order:orders!reviews_order_id_fkey(id)
-        `)
-        .eq('product_id', productId)
+        .select('*')
+        .eq('order_id', productId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

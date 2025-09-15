@@ -105,7 +105,7 @@ const MyOrders = () => {
       case 'cancelled':
         return orders.filter(order => 
           order.status === 'Cancelled' && 
-          new Date(order.updated_at) > thirtyDaysAgo
+          new Date(order.created_at) > thirtyDaysAgo
         );
       default:
         return orders.filter(order => 
@@ -139,7 +139,7 @@ const MyOrders = () => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return orders.filter(order => 
       order.status === 'Cancelled' && 
-      new Date(order.updated_at) > thirtyDaysAgo
+      new Date(order.created_at) > thirtyDaysAgo
     );
   };
 
